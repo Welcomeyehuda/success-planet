@@ -164,7 +164,14 @@ async function loadCharacterModel(who){
   if(!Number.isFinite(size.y)||size.y<=0)throw Error('Bad model dimensions');
   const scale=3.2/size.y;
   rigOffset.scale.setScalar(scale);
-  rigOffset.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
+  // Box3.setFromObject reports world coordinates; subtract the controller's
+  // position before computing a LOCAL rig offset. Otherwise the spawn Z=6
+  // is inadvertently removed and the rendered character stays behind.
+  rigOffset.position.set(
+    -(center.x-avatar.position.x)*scale,
+    -(bounds.min.y-avatar.position.y)*scale,
+    -(center.z-avatar.position.z)*scale
+  );
   fixedRigOffset.copy(rigOffset.position);
   characterModelRoot.position.set(0,0,0);
   model.updateMatrixWorld(true);
