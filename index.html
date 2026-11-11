@@ -162,7 +162,7 @@ function showStageQuestion(){
     <div id="feedback" aria-live="polite"></div>
     <button class="quest-exit" id="leaveQuest">יציאה למשחק</button>`);
   $('#speakQuestion').onclick=()=>readQuestion(q,st.type);
-  $('#speakOptions').onclick=()=>{const isEnglish=st.type==='english'&&q.a.every(x=>/^[A-Za-z\s]+$/.test(x));speakText(q.a.map((a,i)=>(i+1)+'. '+a).join('. '),isEnglish?'en-US':'he-IL')};
+  $('#speakOptions').onclick=()=>{const isEnglish=st.type==='english'&&q.a.every(x=>/^[A-Za-z\s]+$/.test(x));speakText(q.a.map(a=>String(a)).join('... '),isEnglish?'en-US':'he-IL')};
   $('#leaveQuest').onclick=()=>{stopSpeech();currentStage=null;close()};
   document.querySelectorAll('[data-answer]').forEach(button=>button.onclick=()=>{
     if(st.answered)return;
