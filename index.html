@@ -4,8 +4,10 @@
 .quest-header{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:900;color:#7561b3;margin:14px 0 9px}.quest-track{height:12px;background:#e8dcff;border-radius:20px;overflow:hidden;border:1px solid #d9cbfa}.quest-track div{height:100%;background:linear-gradient(90deg,#60d7bb,#a578f3);border-radius:20px;transition:width .25s}.quest-description{text-align:center;padding-top:14px}.quest-question{text-align:center;font-size:clamp(20px,5vw,26px);font-weight:900;margin:21px 0;line-height:1.5}.quest-option{font-size:20px;min-height:72px;transition:transform .15s,background .15s}.quest-option:active{transform:scale(.97)}.answer-correct{background:#d6f8dc!important;border-color:#42b66a!important}.answer-wrong{opacity:.55}.quest-exit{display:block;margin:12px auto 0;background:none;border:0;color:#7667a5;text-decoration:underline;font-weight:800;padding:11px}.quest-victory{text-align:center;font-size:64px;animation:floatPrize 1.6s ease-in-out infinite alternate}.quest-win{text-align:center!important}.quest-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:20px 0}.quest-summary div{text-align:center;background:#ede9ff;border-radius:17px;padding:14px 4px}.quest-summary strong{font-size:24px;display:block;color:#6c4ec3}.quest-summary small{font-size:12px;color:#6e629a}@keyframes floatPrize{to{transform:translateY(-8px)}}@media(prefers-reduced-motion:reduce){.quest-victory{animation:none}.quest-track div{transition:none}}
 .read-button{background:#e9e4ff;border:1px solid #cfc0f7;color:#5d40a2;padding:10px 13px;border-radius:15px;font-weight:900;margin:3px 4px 11px 0;min-height:43px}.read-button.subtle{background:#f8f6ff;color:#786e9a}
 </style></head><body><div id="loading">✨ בונים את הכוכב שלך...</div><div id="game"></div><div id="hud"><div class="top"><div class="brand glass"><small>SUCCESS PLANET · ALPHA</small><strong>⭐ כוכב ההצלחה</strong></div><div class="stats"><div class="chip glass">🪙 <b id="coins">120</b></div><div class="chip glass">⚡ <b id="xp">0</b> XP</div><div class="chip glass">🏅 שלב <b id="level">1</b></div></div></div><div class="tip" id="tip">התקרבו למבנה כדי להיכנס</div><div class="bottom"><div class="actions"><button class="action purple" id="interact">✨ פעולה</button><button class="action" id="wardrobe">👕 אווטאר</button><button class="action" id="help">🧭 עזרה</button></div><div class="pad"><button class="up" data-dir="up">▲</button><button class="left" data-dir="left">◀</button><button class="down" data-dir="down">▼</button><button class="right" data-dir="right">▶</button></div></div></div><div class="modalBackdrop" id="backdrop"><div class="modal"><button class="close" id="close">×</button><div id="modalContent"></div></div></div><div class="welcome" id="welcome"><div class="panel"><div class="planet">🪐✨</div><h1>כוכב ההצלחה</h1><p>העולם שלך. ההצלחה שלך. בחרו מסלול והתחילו לחקור את הכפר הקסום!</p><div class="split"><button data-profile="adel">🦄 אדל<br><small>הרפתקה עדינה</small></button><button data-profile="elroi" class="active">🚀 אלרואי<br><small>הרפתקה מאתגרת</small></button></div><button class="primary" id="start">בואו לשחק! ✨</button><p class="small">דמו בלבד · אין חשבונות אמיתיים · הנתונים נשמרים רק בדפדפן זה</p></div></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}</script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/loaders/GLTFLoader.js';
 const $=s=>document.querySelector(s), scene=new THREE.Scene();scene.background=new THREE.Color('#89d6e6');scene.fog=new THREE.FogExp2('#a6dfe0',.010);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,260);const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;$('#game').appendChild(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xfffaf2,0x4b7c9a,2.35));const sun=new THREE.DirectionalLight(0xfff0ca,3.0);sun.position.set(-30,50,28);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-45;sun.shadow.camera.right=45;sun.shadow.camera.top=45;sun.shadow.camera.bottom=-45;sun.shadow.normalBias=.025;scene.add(sun);
@@ -86,6 +88,49 @@ const elroiCap=mesh(new THREE.CylinderGeometry(.39,.36,.22,12),hairBlue,body,0,3
 const elroiVisor=box(body,.75,.1,.38,hairBlue,0,3.18,.42);
 const adelWings=group(body,0,1.85,-.63);
 for(const side of [-1,1]){const wing=sphere(adelWings,.48,mat('#c8a6fc',.3),side*.4,.16,-.13);wing.scale.set(.55,1.3,.2);wing.rotation.z=-side*.4;}
+
+/** Load properly modeled rigged GLB characters (CC0 KayKit). Keep procedural model as offline fallback.
+ * The models currently load remotely from the creator's public repo; once tested, vendor optimized assets.
+ */
+const characterModelRoot=group(avatar);
+const characterLoader=new GLTFLoader();
+const characterCache=new Map();
+let activeModel=null, modelGeneration=0;
+const characterModels={
+  elroi:'Rogue.glb',
+  adel:'Mage.glb'
+};
+const characterBase='https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/main/addons/kaykit_character_pack_adventures/Characters/gltf/';
+async function loadCharacterModel(who){
+ const generation=++modelGeneration;
+ characterModelRoot.clear();activeModel=null;body.visible=true;
+ try{
+  let model=characterCache.get(who);
+  if(!model){
+    const url=characterBase+characterModels[who];
+    const result=await characterLoader.loadAsync(url);
+    model=result.scene;
+    model.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true;}});
+    characterCache.set(who,model);
+  }
+  if(generation!==modelGeneration)return;
+  characterModelRoot.add(model);
+  model.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(model);
+  const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+  if(!Number.isFinite(size.y)||size.y<=0)throw new Error('Invalid character dimensions');
+  const scale=3.25/size.y;
+  model.scale.setScalar(scale);
+  model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
+  body.visible=false;activeModel=model;
+  toast('✨ דמות תלת־ממדית חדשה נטענה!');
+ }catch(err){
+  if(generation!==modelGeneration)return;
+  console.warn('Character model unavailable; using built-in fallback.',err);
+  characterModelRoot.clear();activeModel=null;body.visible=true;
+  toast('הדמות החלופית נטענה — יש לבדוק חיבור אינטרנט');
+ }
+}
 function applyCharacter(who){
   const isAdel=who==='adel';
   adelHair.visible=isAdel;elroiHair.visible=!isAdel;
@@ -100,6 +145,7 @@ function applyCharacter(who){
   jacket.color.set(isAdel?'#f18ac0':'#547fe8');
   avatar.position.set(0,0,6);avatar.rotation.y=0;
   avatar.userData.who=who;
+  loadCharacterModel(who);
 }
 
 const rocks=[];for(let i=0;i<9;i++){let a=i*2.15,r=23,x=Math.sin(a)*r,z=Math.cos(a)*r;rocks.push(mesh(new THREE.DodecahedronGeometry(.65+(i%3)*.3),mat('#abb9c2'),scene,x,.45,z))}const clouds=[];for(let i=0;i<14;i++){let a=i*2.4,r=27+i*2.2,c=group(scene,Math.cos(a)*r,15+(i%4)*3,Math.sin(a)*r);for(let j=0;j<4;j++)sphere(c,1.3+(j%3)*.3,C.white,j*1.2,Math.sin(j)*.4,0);clouds.push(c)}
@@ -214,5 +260,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPad()
 window.addEventListener('pagehide',()=>{clearPad();keys.clear()});
 const keyMap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};addEventListener('keydown',e=>{if(keyMap[e.key]){e.preventDefault();keys.add(keyMap[e.key])}if(e.key==='Escape')close();if(e.key===' '&&!$('#backdrop').classList.contains('open'))interact()});addEventListener('keyup',e=>{if(keyMap[e.key])keys.delete(keyMap[e.key])});addEventListener('blur',()=>keys.clear());
 for(let b of document.querySelectorAll('[data-profile]'))b.onclick=()=>{profile=b.dataset.profile;document.querySelectorAll('[data-profile]').forEach(x=>x.classList.toggle('active',x===b))};$('#start').onclick=()=>{let s;try{s=JSON.parse(localStorage.getItem('sp-alpha-'+profile)||'{}')}catch{s={}}save=s;coins=s.coins??120;xp=s.xp??0;color=s.color??(profile==='adel'?'pink':'blue');applyCharacter(profile);setColor(color);for(let id of s.owned||[])spawnItem(id);$('#welcome').classList.add('hidden');update();toast('ברוכים הבאים לכוכב ההצלחה! ⭐')};
-function animate(t){requestAnimationFrame(animate);if(padPointers.size && performance.now()-padLast>12000)clearPad();let dt=Math.min((t-last)/1000,.05);last=t;let vx=0,vz=0;if(!$('#welcome').classList.contains('hidden')||$('#backdrop').classList.contains('open'))keys.clear();if(keys.has('left'))vx-=1;if(keys.has('right'))vx+=1;if(keys.has('up'))vz-=1;if(keys.has('down'))vz+=1;let mag=Math.hypot(vx,vz);if(mag){vx/=mag;vz/=mag;let nx=avatar.position.x+vx*7.7*dt,nz=avatar.position.z+vz*7.7*dt;if(Math.hypot(nx,nz)<26){avatar.position.x=nx;avatar.position.z=nz}const targetAngle=Math.atan2(vx,vz);avatar.rotation.y+=Math.atan2(Math.sin(targetAngle-avatar.rotation.y),Math.cos(targetAngle-avatar.rotation.y))*Math.min(1,dt*10);walking+=dt*12;leftLeg.rotation.x=Math.sin(walking)*.65;rightLeg.rotation.x=-Math.sin(walking)*.65;leftArm.rotation.x=-Math.sin(walking)*.47;rightArm.rotation.x=Math.sin(walking)*.47;body.rotation.z=Math.sin(walking)*.035}else{leftLeg.rotation.x*=.83;rightLeg.rotation.x*=.83;leftArm.rotation.x*=.83;rightArm.rotation.x*=.83}body.rotation.z*=mag?1:.88;body.position.y=mag?Math.abs(Math.sin(walking))*.095:Math.sin(t*.002)*.05;head.rotation.z=Math.sin(t*.0017)*.045;hair.rotation.y=Math.sin(t*.0019)*.055;backpack.rotation.x=mag?Math.sin(walking)*.06:Math.sin(t*.001)*.02;let target=avatar.position.clone().add(new THREE.Vector3(0,12,18));camera.position.lerp(target,.055);camera.lookAt(avatar.position.x,2,avatar.position.z-1);starRing.rotation.y+=dt*.33;for(const fx of worldEffects){if(fx.kind==='orb')fx.g.position.y=fx.y+Math.sin(t*.0014+fx.i)*.23;else if(fx.kind==='lantern')fx.g.material.opacity=.11+.045*Math.sin(t*.002+fx.i);else fx.g.position.y=fx.y+Math.sin(t*.0004+fx.i)*.15}for(let i=0;i<clouds.length;i++)clouds[i].position.x+=dt*(.12+i%3*.05);near=null;let dist=5.7;for(let b of buildings){let d=Math.hypot(avatar.position.x-b.x,avatar.position.z-b.z);if(d<dist){near=b;dist=d}}if(near){$('#interact').innerText=near.icon+' '+near.name;$('#interact').style.opacity=1}else{$('#interact').innerText='✨ פעולה';$('#interact').style.opacity=.7}renderer.render(scene,camera)}camera.position.set(0,12,25);camera.lookAt(0,0,0);requestAnimationFrame(animate);$('#loading').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
+function animate(t){requestAnimationFrame(animate);if(padPointers.size && performance.now()-padLast>12000)clearPad();let dt=Math.min((t-last)/1000,.05);last=t;let vx=0,vz=0;if(!$('#welcome').classList.contains('hidden')||$('#backdrop').classList.contains('open'))keys.clear();if(keys.has('left'))vx-=1;if(keys.has('right'))vx+=1;if(keys.has('up'))vz-=1;if(keys.has('down'))vz+=1;let mag=Math.hypot(vx,vz);if(mag){vx/=mag;vz/=mag;let nx=avatar.position.x+vx*7.7*dt,nz=avatar.position.z+vz*7.7*dt;if(Math.hypot(nx,nz)<26){avatar.position.x=nx;avatar.position.z=nz}const targetAngle=Math.atan2(vx,vz);avatar.rotation.y+=Math.atan2(Math.sin(targetAngle-avatar.rotation.y),Math.cos(targetAngle-avatar.rotation.y))*Math.min(1,dt*10);walking+=dt*12;leftLeg.rotation.x=Math.sin(walking)*.65;rightLeg.rotation.x=-Math.sin(walking)*.65;leftArm.rotation.x=-Math.sin(walking)*.47;rightArm.rotation.x=Math.sin(walking)*.47;body.rotation.z=Math.sin(walking)*.035}else{leftLeg.rotation.x*=.83;rightLeg.rotation.x*=.83;leftArm.rotation.x*=.83;rightArm.rotation.x*=.83}body.rotation.z*=mag?1:.88;body.position.y=mag?Math.abs(Math.sin(walking))*.095:Math.sin(t*.002)*.05;if(activeModel){characterModelRoot.position.y=mag?Math.abs(Math.sin(walking))*.065:Math.sin(t*.0018)*.035;characterModelRoot.rotation.z=mag?Math.sin(walking)*.028:Math.sin(t*.0015)*.012;}head.rotation.z=Math.sin(t*.0017)*.045;hair.rotation.y=Math.sin(t*.0019)*.055;backpack.rotation.x=mag?Math.sin(walking)*.06:Math.sin(t*.001)*.02;let target=avatar.position.clone().add(new THREE.Vector3(0,12,18));camera.position.lerp(target,.055);camera.lookAt(avatar.position.x,2,avatar.position.z-1);starRing.rotation.y+=dt*.33;for(const fx of worldEffects){if(fx.kind==='orb')fx.g.position.y=fx.y+Math.sin(t*.0014+fx.i)*.23;else if(fx.kind==='lantern')fx.g.material.opacity=.11+.045*Math.sin(t*.002+fx.i);else fx.g.position.y=fx.y+Math.sin(t*.0004+fx.i)*.15}for(let i=0;i<clouds.length;i++)clouds[i].position.x+=dt*(.12+i%3*.05);near=null;let dist=5.7;for(let b of buildings){let d=Math.hypot(avatar.position.x-b.x,avatar.position.z-b.z);if(d<dist){near=b;dist=d}}if(near){$('#interact').innerText=near.icon+' '+near.name;$('#interact').style.opacity=1}else{$('#interact').innerText='✨ פעולה';$('#interact').style.opacity=.7}renderer.render(scene,camera)}camera.position.set(0,12,25);camera.lookAt(0,0,0);requestAnimationFrame(animate);$('#loading').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
 </script></body></html>
