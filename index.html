@@ -144,7 +144,9 @@ async function loadCharacterModel(who){
   if(!Number.isFinite(size.y)||size.y<=0)throw Error('Bad model dimensions');
   const scale=3.2/size.y;
   model.scale.setScalar(scale);
+  // Separate fixed visual offset from potentially animated scene transforms.
   model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
+  characterModelRoot.position.x=0;characterModelRoot.position.z=0;
   model.updateMatrixWorld(true);
   body.visible=false;activeModel=model;
   if(data.animations?.length){
@@ -214,16 +216,24 @@ async function decorateWithRealAssets(){
  for(const type of catalog){
   try{
    const item=await loader.loadAsync(natureAssetBase+type.name);
+   // Normalize the model *inside* a positioned anchor. Otherwise the artist's
+   // original GLB offsets are scaled and scatter props far outside the island.
    const b=new THREE.Box3().setFromObject(item.scene);
-   const h=b.getSize(new THREE.Vector3()).y||1;
+   const dims=b.getSize(new THREE.Vector3());
+   const h=Math.max(.001,dims.y);
+   const scale=type.size/h;
+   const center=b.getCenter(new THREE.Vector3());
    for(let i=0;i<type.count;i++){
     let a=(i+1)*2.39996+(type.count%7),r=type.min+(i/type.count)*(type.max-type.min);
     let x=Math.sin(a)*r,z=Math.cos(a)*r;
     if(buildings.some(building=>Math.hypot(building.x-x,building.z-z)<6))continue;
+    const anchor=new THREE.Group();
+    anchor.position.set(x,0,z);anchor.rotation.y=a;
     const obj=item.scene.clone(true);
-    obj.position.set(x,0,z);obj.scale.setScalar(type.size/h);
-    obj.rotation.y=a;obj.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true}});
-    scene.add(obj);success++;
+    obj.scale.setScalar(scale);
+    obj.position.set(-center.x*scale,-b.min.y*scale,-center.z*scale);
+    obj.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true}});
+    anchor.add(obj);scene.add(anchor);success++;
    }
   }catch(error){console.warn('Nature asset unavailable',type.name,error)}
  }
@@ -324,5 +334,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPad()
 window.addEventListener('pagehide',()=>{clearPad();keys.clear()});
 const keyMap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};addEventListener('keydown',e=>{if(keyMap[e.key]){e.preventDefault();keys.add(keyMap[e.key])}if(e.key==='Escape')close();if(e.key===' '&&!$('#backdrop').classList.contains('open'))interact()});addEventListener('keyup',e=>{if(keyMap[e.key])keys.delete(keyMap[e.key])});addEventListener('blur',()=>keys.clear());
 for(let b of document.querySelectorAll('[data-profile]'))b.onclick=()=>{profile=b.dataset.profile;document.querySelectorAll('[data-profile]').forEach(x=>x.classList.toggle('active',x===b))};$('#start').onclick=()=>{let s;try{s=JSON.parse(localStorage.getItem('sp-alpha-'+profile)||'{}')}catch{s={}}save=s;coins=s.coins??120;xp=s.xp??0;color=s.color??(profile==='adel'?'pink':'blue');applyCharacter(profile);setColor(color);for(let id of s.owned||[])spawnItem(id);$('#welcome').classList.add('hidden');update();toast('ברוכים הבאים לכוכב ההצלחה! ⭐')};
-function animate(t){requestAnimationFrame(animate);if(padPointers.size && performance.now()-padLast>12000)clearPad();let dt=Math.min((t-last)/1000,.05);last=t;if(activeMixer)activeMixer.update(dt);let vx=0,vz=0;if(!$('#welcome').classList.contains('hidden')||$('#backdrop').classList.contains('open'))keys.clear();if(keys.has('left'))vx-=1;if(keys.has('right'))vx+=1;if(keys.has('up'))vz-=1;if(keys.has('down'))vz+=1;let mag=Math.hypot(vx,vz);if(activeMixer)setModelMotion(Boolean(mag));if(mag){vx/=mag;vz/=mag;let nx=avatar.position.x+vx*7.7*dt,nz=avatar.position.z+vz*7.7*dt;if(Math.hypot(nx,nz)<26){avatar.position.x=nx;avatar.position.z=nz}const targetAngle=Math.atan2(vx,vz);avatar.rotation.y+=Math.atan2(Math.sin(targetAngle-avatar.rotation.y),Math.cos(targetAngle-avatar.rotation.y))*Math.min(1,dt*10);walking+=dt*12;leftLeg.rotation.x=Math.sin(walking)*.65;rightLeg.rotation.x=-Math.sin(walking)*.65;leftArm.rotation.x=-Math.sin(walking)*.47;rightArm.rotation.x=Math.sin(walking)*.47;body.rotation.z=Math.sin(walking)*.035}else{leftLeg.rotation.x*=.83;rightLeg.rotation.x*=.83;leftArm.rotation.x*=.83;rightArm.rotation.x*=.83}body.rotation.z*=mag?1:.88;body.position.y=mag?Math.abs(Math.sin(walking))*.095:Math.sin(t*.002)*.05;if(activeModel){characterModelRoot.position.y=mag?Math.abs(Math.sin(walking))*.065:Math.sin(t*.0018)*.035;characterModelRoot.rotation.z=mag?Math.sin(walking)*.028:Math.sin(t*.0015)*.012;}head.rotation.z=Math.sin(t*.0017)*.045;hair.rotation.y=Math.sin(t*.0019)*.055;backpack.rotation.x=mag?Math.sin(walking)*.06:Math.sin(t*.001)*.02;let target=avatar.position.clone().add(new THREE.Vector3(0,12,18));camera.position.lerp(target,.055);camera.lookAt(avatar.position.x,2,avatar.position.z-1);starRing.rotation.y+=dt*.33;for(const fx of worldEffects){if(fx.kind==='orb')fx.g.position.y=fx.y+Math.sin(t*.0014+fx.i)*.23;else if(fx.kind==='lantern')fx.g.material.opacity=.11+.045*Math.sin(t*.002+fx.i);else fx.g.position.y=fx.y+Math.sin(t*.0004+fx.i)*.15}for(let i=0;i<clouds.length;i++)clouds[i].position.x+=dt*(.12+i%3*.05);near=null;let dist=5.7;for(let b of buildings){let d=Math.hypot(avatar.position.x-b.x,avatar.position.z-b.z);if(d<dist){near=b;dist=d}}if(near){$('#interact').innerText=near.icon+' '+near.name;$('#interact').style.opacity=1}else{$('#interact').innerText='✨ פעולה';$('#interact').style.opacity=.7}renderer.render(scene,camera)}camera.position.set(0,12,25);camera.lookAt(0,0,0);requestAnimationFrame(animate);$('#loading').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
+function animate(t){requestAnimationFrame(animate);if(padPointers.size && performance.now()-padLast>12000)clearPad();let dt=Math.min((t-last)/1000,.05);last=t;if(activeMixer){activeMixer.update(dt);if(activeModel){/* Keep 3D model anchored to its avatar controller. */characterModelRoot.position.x=0;characterModelRoot.position.z=0;}}let vx=0,vz=0;if(!$('#welcome').classList.contains('hidden')||$('#backdrop').classList.contains('open'))keys.clear();if(keys.has('left'))vx-=1;if(keys.has('right'))vx+=1;if(keys.has('up'))vz-=1;if(keys.has('down'))vz+=1;let mag=Math.hypot(vx,vz);if(activeMixer)setModelMotion(Boolean(mag));if(mag){vx/=mag;vz/=mag;let nx=avatar.position.x+vx*7.7*dt,nz=avatar.position.z+vz*7.7*dt;if(Math.hypot(nx,nz)<26){avatar.position.x=nx;avatar.position.z=nz}const targetAngle=Math.atan2(vx,vz);avatar.rotation.y+=Math.atan2(Math.sin(targetAngle-avatar.rotation.y),Math.cos(targetAngle-avatar.rotation.y))*Math.min(1,dt*10);walking+=dt*12;leftLeg.rotation.x=Math.sin(walking)*.65;rightLeg.rotation.x=-Math.sin(walking)*.65;leftArm.rotation.x=-Math.sin(walking)*.47;rightArm.rotation.x=Math.sin(walking)*.47;body.rotation.z=Math.sin(walking)*.035}else{leftLeg.rotation.x*=.83;rightLeg.rotation.x*=.83;leftArm.rotation.x*=.83;rightArm.rotation.x*=.83}body.rotation.z*=mag?1:.88;body.position.y=mag?Math.abs(Math.sin(walking))*.095:Math.sin(t*.002)*.05;if(activeModel){characterModelRoot.position.y=mag?Math.abs(Math.sin(walking))*.065:Math.sin(t*.0018)*.035;characterModelRoot.rotation.z=mag?Math.sin(walking)*.028:Math.sin(t*.0015)*.012;}head.rotation.z=Math.sin(t*.0017)*.045;hair.rotation.y=Math.sin(t*.0019)*.055;backpack.rotation.x=mag?Math.sin(walking)*.06:Math.sin(t*.001)*.02;let target=avatar.position.clone().add(new THREE.Vector3(0,12,18));camera.position.lerp(target,.055);camera.lookAt(avatar.position.x,2,avatar.position.z-1);starRing.rotation.y+=dt*.33;for(const fx of worldEffects){if(fx.kind==='orb')fx.g.position.y=fx.y+Math.sin(t*.0014+fx.i)*.23;else if(fx.kind==='lantern')fx.g.material.opacity=.11+.045*Math.sin(t*.002+fx.i);else fx.g.position.y=fx.y+Math.sin(t*.0004+fx.i)*.15}for(let i=0;i<clouds.length;i++)clouds[i].position.x+=dt*(.12+i%3*.05);near=null;let dist=5.7;for(let b of buildings){let d=Math.hypot(avatar.position.x-b.x,avatar.position.z-b.z);if(d<dist){near=b;dist=d}}if(near){$('#interact').innerText=near.icon+' '+near.name;$('#interact').style.opacity=1}else{$('#interact').innerText='✨ פעולה';$('#interact').style.opacity=.7}renderer.render(scene,camera)}camera.position.set(0,12,25);camera.lookAt(0,0,0);requestAnimationFrame(animate);$('#loading').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
 </script></body></html>
