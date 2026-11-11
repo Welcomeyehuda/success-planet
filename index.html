@@ -98,6 +98,7 @@ const characterModelRoot=group(avatar);
 const characterLoader=new GLTFLoader();
 const characterCache=new Map();
 let activeModel=null,activeMixer=null,currentAnimation=null,modelGeneration=0;
+let activeRigRoot=null;const fixedRigOffset=new THREE.Vector3();
 const characterModels={elroi:'Rogue.glb',adel:'Mage.glb'};
 const modelAssetPath='addons/kaykit_character_pack_adventures/Characters/gltf/';
 const sources=[
@@ -109,6 +110,18 @@ function showModelStatus(message,good=false){
   if(!e){e=document.createElement('div');e.id='modelStatus';e.setAttribute('role','status');document.body.appendChild(e)}
   e.textContent=message;e.dataset.good=good?'yes':'no';
 }
+// Strip animation tracks that move the character's world root. The movement
+// controller is the only authority for horizontal player displacement.
+function inPlaceClip(clip, sceneRoot){
+ const rootNames=new Set([sceneRoot.name, 'Root', 'root', 'Armature', 'armature', 'Hips', 'hips', 'Pelvis', 'pelvis']);
+ const tracks=clip.tracks.filter(track=>{
+   if(!track.name.endsWith('.position'))return true;
+   const path=track.name.slice(0,-'.position'.length);
+   const node=path.split(/[\\/.]/).filter(Boolean).pop()||'';
+   return !rootNames.has(node) && path!=='' && path!=='.';
+ });
+ return new THREE.AnimationClip(clip.name,clip.duration,tracks);
+}
 function setModelMotion(running){
   if(!activeMixer || !currentAnimation)return;
   let actions=activeMixer.userData;
@@ -116,14 +129,14 @@ function setModelMotion(running){
   const name=running?'walk':'idle';
   if(currentAnimation===name)return;
   const current=actions[currentAnimation],next=actions[name];
-  if(!next)return;
+  if(!next || next===current)return;
   next.reset().fadeIn(.23).play();
   if(current)current.fadeOut(.23);
   currentAnimation=name;
 }
 async function loadCharacterModel(who){
  const generation=++modelGeneration;
- characterModelRoot.clear();activeModel=null;activeMixer=null;currentAnimation=null;body.visible=true;
+ characterModelRoot.clear();characterModelRoot.position.set(0,0,0);characterModelRoot.rotation.set(0,0,0);activeModel=null;activeMixer=null;activeRigRoot=null;currentAnimation=null;body.visible=true;
  showModelStatus('⏳ טוען דמות 3D מקצועית...');
  let data=characterCache.get(who),failure=null;
  if(!data){
@@ -138,31 +151,40 @@ async function loadCharacterModel(who){
  try{
   const model=data.scene;
   model.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true}});
-  characterModelRoot.add(model);
-  model.scale.set(1,1,1);model.position.set(0,0,0);model.updateMatrixWorld(true);
-  const bounds=new THREE.Box3().setFromObject(model);const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+  // Fixed transform parent must be separate from the animated scene root.
+  // Animation clips can legitimately target scene-root.position, which would
+  // overwrite centering if the offset lived directly on the scene root.
+  const rigOffset=new THREE.Group();rigOffset.name='FixedRigOffset';
+  characterModelRoot.add(rigOffset);
+  rigOffset.add(model);
+  model.scale.set(1,1,1);model.position.set(0,0,0);model.rotation.set(0,0,0);
+  model.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(model);
+  const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
   if(!Number.isFinite(size.y)||size.y<=0)throw Error('Bad model dimensions');
   const scale=3.2/size.y;
-  model.scale.setScalar(scale);
-  // Separate fixed visual offset from potentially animated scene transforms.
-  model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
-  characterModelRoot.position.x=0;characterModelRoot.position.z=0;
+  rigOffset.scale.setScalar(scale);
+  rigOffset.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
+  fixedRigOffset.copy(rigOffset.position);
+  characterModelRoot.position.set(0,0,0);
   model.updateMatrixWorld(true);
-  body.visible=false;activeModel=model;
+  body.visible=false;activeModel=model;activeRigRoot=rigOffset;
   if(data.animations?.length){
     activeMixer=new THREE.AnimationMixer(model);activeMixer.userData={};
     const names=data.animations.map(c=>c.name);
-    const idle=data.animations.find(c=>/idle/i.test(c.name))||data.animations[0];
-    const walk=data.animations.find(c=>/walking|walk/i.test(c.name))||idle;
+    const originalIdle=data.animations.find(c=>/idle/i.test(c.name))||data.animations[0];
+    const originalWalk=data.animations.find(c=>/walking|walk/i.test(c.name))||originalIdle;
+    const idle=inPlaceClip(originalIdle,model),walk=originalWalk===originalIdle?idle:inPlaceClip(originalWalk,model);
     activeMixer.userData.idle=activeMixer.clipAction(idle);
     activeMixer.userData.walk=activeMixer.clipAction(walk);
+    console.info('In-place animation tracks', {idle:idle.tracks.length,walk:walk.tracks.length});
     activeMixer.userData.idle.play();currentAnimation='idle';
     console.info('KayKit clips:',names);
   }
   showModelStatus('✓ מודל תלת־ממדי נטען',true);
  }catch(err){
   console.warn('Character render failed',err);
-  characterModelRoot.clear();activeModel=null;activeMixer=null;body.visible=true;
+  characterModelRoot.clear();activeModel=null;activeMixer=null;activeRigRoot=null;body.visible=true;
   showModelStatus('⚠️ שגיאה במודל — דמות גיבוי מוצגת');
  }
 }
@@ -334,5 +356,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPad()
 window.addEventListener('pagehide',()=>{clearPad();keys.clear()});
 const keyMap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};addEventListener('keydown',e=>{if(keyMap[e.key]){e.preventDefault();keys.add(keyMap[e.key])}if(e.key==='Escape')close();if(e.key===' '&&!$('#backdrop').classList.contains('open'))interact()});addEventListener('keyup',e=>{if(keyMap[e.key])keys.delete(keyMap[e.key])});addEventListener('blur',()=>keys.clear());
 for(let b of document.querySelectorAll('[data-profile]'))b.onclick=()=>{profile=b.dataset.profile;document.querySelectorAll('[data-profile]').forEach(x=>x.classList.toggle('active',x===b))};$('#start').onclick=()=>{let s;try{s=JSON.parse(localStorage.getItem('sp-alpha-'+profile)||'{}')}catch{s={}}save=s;coins=s.coins??120;xp=s.xp??0;color=s.color??(profile==='adel'?'pink':'blue');applyCharacter(profile);setColor(color);for(let id of s.owned||[])spawnItem(id);$('#welcome').classList.add('hidden');update();toast('ברוכים הבאים לכוכב ההצלחה! ⭐')};
-function animate(t){requestAnimationFrame(animate);if(padPointers.size && performance.now()-padLast>12000)clearPad();let dt=Math.min((t-last)/1000,.05);last=t;if(activeMixer){activeMixer.update(dt);if(activeModel){/* Keep 3D model anchored to its avatar controller. */characterModelRoot.position.x=0;characterModelRoot.position.z=0;}}let vx=0,vz=0;if(!$('#welcome').classList.contains('hidden')||$('#backdrop').classList.contains('open'))keys.clear();if(keys.has('left'))vx-=1;if(keys.has('right'))vx+=1;if(keys.has('up'))vz-=1;if(keys.has('down'))vz+=1;let mag=Math.hypot(vx,vz);if(activeMixer)setModelMotion(Boolean(mag));if(mag){vx/=mag;vz/=mag;let nx=avatar.position.x+vx*7.7*dt,nz=avatar.position.z+vz*7.7*dt;if(Math.hypot(nx,nz)<26){avatar.position.x=nx;avatar.position.z=nz}const targetAngle=Math.atan2(vx,vz);avatar.rotation.y+=Math.atan2(Math.sin(targetAngle-avatar.rotation.y),Math.cos(targetAngle-avatar.rotation.y))*Math.min(1,dt*10);walking+=dt*12;leftLeg.rotation.x=Math.sin(walking)*.65;rightLeg.rotation.x=-Math.sin(walking)*.65;leftArm.rotation.x=-Math.sin(walking)*.47;rightArm.rotation.x=Math.sin(walking)*.47;body.rotation.z=Math.sin(walking)*.035}else{leftLeg.rotation.x*=.83;rightLeg.rotation.x*=.83;leftArm.rotation.x*=.83;rightArm.rotation.x*=.83}body.rotation.z*=mag?1:.88;body.position.y=mag?Math.abs(Math.sin(walking))*.095:Math.sin(t*.002)*.05;if(activeModel){characterModelRoot.position.y=mag?Math.abs(Math.sin(walking))*.065:Math.sin(t*.0018)*.035;characterModelRoot.rotation.z=mag?Math.sin(walking)*.028:Math.sin(t*.0015)*.012;}head.rotation.z=Math.sin(t*.0017)*.045;hair.rotation.y=Math.sin(t*.0019)*.055;backpack.rotation.x=mag?Math.sin(walking)*.06:Math.sin(t*.001)*.02;let target=avatar.position.clone().add(new THREE.Vector3(0,12,18));camera.position.lerp(target,.055);camera.lookAt(avatar.position.x,2,avatar.position.z-1);starRing.rotation.y+=dt*.33;for(const fx of worldEffects){if(fx.kind==='orb')fx.g.position.y=fx.y+Math.sin(t*.0014+fx.i)*.23;else if(fx.kind==='lantern')fx.g.material.opacity=.11+.045*Math.sin(t*.002+fx.i);else fx.g.position.y=fx.y+Math.sin(t*.0004+fx.i)*.15}for(let i=0;i<clouds.length;i++)clouds[i].position.x+=dt*(.12+i%3*.05);near=null;let dist=5.7;for(let b of buildings){let d=Math.hypot(avatar.position.x-b.x,avatar.position.z-b.z);if(d<dist){near=b;dist=d}}if(near){$('#interact').innerText=near.icon+' '+near.name;$('#interact').style.opacity=1}else{$('#interact').innerText='✨ פעולה';$('#interact').style.opacity=.7}renderer.render(scene,camera)}camera.position.set(0,12,25);camera.lookAt(0,0,0);requestAnimationFrame(animate);$('#loading').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
+function animate(t){requestAnimationFrame(animate);if(padPointers.size && performance.now()-padLast>12000)clearPad();let dt=Math.min((t-last)/1000,.05);last=t;if(activeMixer){activeMixer.update(dt);if(activeModel){
+  // Defensive position lock even if a third-party animation contains unexpected root motion.
+  activeModel.position.x=0;activeModel.position.z=0;
+  characterModelRoot.position.x=0;characterModelRoot.position.z=0;
+}}let vx=0,vz=0;if(!$('#welcome').classList.contains('hidden')||$('#backdrop').classList.contains('open'))keys.clear();if(keys.has('left'))vx-=1;if(keys.has('right'))vx+=1;if(keys.has('up'))vz-=1;if(keys.has('down'))vz+=1;let mag=Math.hypot(vx,vz);if(activeMixer)setModelMotion(Boolean(mag));if(mag){vx/=mag;vz/=mag;let nx=avatar.position.x+vx*7.7*dt,nz=avatar.position.z+vz*7.7*dt;if(Math.hypot(nx,nz)<26){avatar.position.x=nx;avatar.position.z=nz}const targetAngle=Math.atan2(vx,vz);avatar.rotation.y+=Math.atan2(Math.sin(targetAngle-avatar.rotation.y),Math.cos(targetAngle-avatar.rotation.y))*Math.min(1,dt*10);walking+=dt*12;leftLeg.rotation.x=Math.sin(walking)*.65;rightLeg.rotation.x=-Math.sin(walking)*.65;leftArm.rotation.x=-Math.sin(walking)*.47;rightArm.rotation.x=Math.sin(walking)*.47;body.rotation.z=Math.sin(walking)*.035}else{leftLeg.rotation.x*=.83;rightLeg.rotation.x*=.83;leftArm.rotation.x*=.83;rightArm.rotation.x*=.83}body.rotation.z*=mag?1:.88;body.position.y=mag?Math.abs(Math.sin(walking))*.095:Math.sin(t*.002)*.05;if(activeModel){characterModelRoot.position.y=mag?Math.abs(Math.sin(walking))*.035:0;characterModelRoot.rotation.z=mag?Math.sin(walking)*.012:0;}head.rotation.z=Math.sin(t*.0017)*.045;hair.rotation.y=Math.sin(t*.0019)*.055;backpack.rotation.x=mag?Math.sin(walking)*.06:Math.sin(t*.001)*.02;let target=avatar.position.clone().add(new THREE.Vector3(0,12,18));camera.position.lerp(target,.055);camera.lookAt(avatar.position.x,2,avatar.position.z-1);starRing.rotation.y+=dt*.33;for(const fx of worldEffects){if(fx.kind==='orb')fx.g.position.y=fx.y+Math.sin(t*.0014+fx.i)*.23;else if(fx.kind==='lantern')fx.g.material.opacity=.11+.045*Math.sin(t*.002+fx.i);else fx.g.position.y=fx.y+Math.sin(t*.0004+fx.i)*.15}for(let i=0;i<clouds.length;i++)clouds[i].position.x+=dt*(.12+i%3*.05);near=null;let dist=5.7;for(let b of buildings){let d=Math.hypot(avatar.position.x-b.x,avatar.position.z-b.z);if(d<dist){near=b;dist=d}}if(near){$('#interact').innerText=near.icon+' '+near.name;$('#interact').style.opacity=1}else{$('#interact').innerText='✨ פעולה';$('#interact').style.opacity=.7}renderer.render(scene,camera)}camera.position.set(0,12,25);camera.lookAt(0,0,0);requestAnimationFrame(animate);$('#loading').classList.add('hidden');addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})
 </script></body></html>
