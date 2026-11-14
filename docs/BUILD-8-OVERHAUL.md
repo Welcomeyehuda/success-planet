@@ -5,6 +5,19 @@ Date: 2026-11-14
 ## Product goal
 An original, visually polished, mobile-first Hebrew 3D educational adventure for two separate child profiles (Adel / Elroi). Learning drives exploration, building and progression. Keep existing GitHub Pages URL and never modify the older learning app or Lovable.
 
+## RELEASE BLOCKER — Avatar leaves center when turning (P0, reported 2026-11-14)
+**Observed on iPhone:** Turning left/right, moving forward/back, or changing facing direction causes the imported 3D character to visually drift away from the player's center. Prior pivot/root-motion patches and a successful GitHub Pages deploy did NOT establish that this was fixed.
+
+**Engineering requirements:**
+- A single authoritative player controller owns horizontal world position and intended facing. Animated render meshes must never modify controller position.
+- Use an invariant transform hierarchy: `playerController → facingPivot → stableVisualOffset → skinnedMesh/rig`. Recalculate bounds in character-local coordinates in the bind/rest pose, not in transformed world coordinates.
+- Investigate animation tracks for both scene-root and animated skeleton hips/root; for locomotion keep in-place clips or properly remove root translation without destroying vertical foot motion.
+- Ensure asset's forward axis and pivot align with movement heading. Do not compute a new visual center each frame.
+- Decouple target camera from animated mesh bounds; track controller target only. Apply frame-rate-independent damping and avoid camera rotation artifacts.
+- Add debug toggle with controller origin, visual pivot, rig root, ground contact, axis markers, and overlay of their relative offsets; screenshot/video comparison for each child profile.
+- Test both child avatars independently on iPhone Safari: stationary full 360° rotation, forward → stop → backward, left/right strafing or turn, repeated 180° direction reversals, diagonals, touch interruption, UI modal opening and device backgrounding; character must remain centered and grounded with no persistent drift or erratic movement.
+- **Do not mark completed or merge the next graphics vertical slice until a real iPhone test confirms stable centering in every direction.** CI success or render success alone is insufficient.
+
 ## 1. Smooth performance and controller (priority P0)
 - Refactor monolithic HTML into modules (input, movement, animation state, camera, scene streaming, UI, quiz, progression, persistence).
 - Use frame-rate-independent acceleration/deceleration, a dead zone, normalized diagonals and touch-safe pointer capture with cleanup on pointercancel, blur, visibilitychange and pagehide.
