@@ -120,7 +120,7 @@ function frame(){
  frameTimer+=dt;frameCount++;if(frameTimer>=1){document.querySelector('#fps').textContent='FPS '+Math.round(frameCount/frameTimer);frameTimer=0;frameCount=0}
  scene.render();
 }
-document.querySelector('#enter').onclick=()=>{document.querySelector('#splash').style.display='none';chooseHero(hero);};
+document.querySelector('#enter').onclick=()=>{document.querySelector('#splash').style.display='none';chooseHero(hero);document.querySelector('#status').textContent='טוען דמות — בינתיים אפשר להסתובב בכפר';};
 window.addEventListener('resize',()=>engine.resize());
 engine.runRenderLoop(frame);
 </script></body></html>
