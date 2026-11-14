@@ -272,7 +272,36 @@ decorateWithRealAssets();
 
 let profile='elroi',color='blue',save={},coins=120,xp=0,level=1,keys=new Set(),last=performance.now(),near=null,walking=0,questionIndex=0;
 const moveVelocity=new THREE.Vector2(0,0);const desiredVelocity=new THREE.Vector2(0,0);const moveSpeed=7.7;const questionBank={"elroi":{"math":[{"q":"כמה הם 8 × 7?","a":["54","56","64","48"],"ok":1},{"q":"כמה הם 96 ÷ 8?","a":["10","12","14","16"],"ok":1},{"q":"כמה הם 125 + 78?","a":["193","203","213","198"],"ok":1},{"q":"כמה הם 9 × 6?","a":["45","56","54","63"],"ok":2},{"q":"מהו חצי מ־150?","a":["50","65","75","85"],"ok":2},{"q":"מהו רבע מ־80?","a":["16","20","24","40"],"ok":1},{"q":"כמה הם 300 − 145?","a":["165","155","145","175"],"ok":1}],"hebrew":[{"q":"מהי צורת הרבים של ״איש״?","a":["אישים","אנשים","אישות","אישונים"],"ok":1},{"q":"איזו מילה היא פועל?","a":["שולחן","קופץ","כחול","מחר"],"ok":1},{"q":"איזו מילה נרדפת ל״שמח״?","a":["עצוב","מאושר","עייף","כועס"],"ok":1},{"q":"מה ההפך מ״רחב״?","a":["עמוק","גדול","צר","גבוה"],"ok":2},{"q":"איזו מילה כתובה נכון?","a":["מישחק","משחק","מיסחק","מישכק"],"ok":1},{"q":"מהו שם תואר?","a":["רץ","יפה","כדור","אתמול"],"ok":1}],"english":[{"q":"What is the opposite of HOT?","a":["Cold","Big","Fast","Old"],"ok":0},{"q":"Choose the plural of CHILD","a":["Childs","Children","Childes","Child"],"ok":1},{"q":"What does WINDOW mean?","a":["דלת","חלון","שולחן","רצפה"],"ok":1},{"q":"Complete: She ___ a book.","a":["read","reads","reading","are"],"ok":1},{"q":"Which word means 'מהיר'?","a":["Slow","Small","Fast","Tall"],"ok":2},{"q":"Choose the correct sentence.","a":["He are happy","He is happy","He am happy","He be happy"],"ok":1}],"engineering":[{"q":"כמה צלעות יש למשושה?","a":["4","5","6","8"],"ok":2},{"q":"באיזו צורה יש ארבע זוויות ישרות?","a":["משולש","מלבן","עיגול","מחומש"],"ok":1},{"q":"כמה סנטימטרים יש במטר?","a":["10","100","1000","50"],"ok":1},{"q":"איזו צורה יכולה להתגלגל בקלות?","a":["קובייה","גליל","פירמידה","תיבה"],"ok":1},{"q":"מה עוזר לייצב גשר?","a":["עמודים תומכים","צבע אדום","שלט","חלון"],"ok":0},{"q":"כמה פאות יש לקובייה?","a":["4","6","8","12"],"ok":1}]},"adel":{"math":[{"q":"כמה הם 3 + 2?","a":["4","5","6","3"],"ok":1},{"q":"כמה הם 5 − 2?","a":["2","4","3","1"],"ok":2},{"q":"איזה מספר בא אחרי 7?","a":["6","9","8","5"],"ok":2},{"q":"כמה הם 4 + 4?","a":["6","7","8","9"],"ok":2},{"q":"כמה הם 10 − 1?","a":["8","9","10","7"],"ok":1},{"q":"כמה הם 2 + 3?","a":["4","6","5","3"],"ok":2}],"hebrew":[{"q":"איזו אות פותחת את המילה ״בית״?","a":["א","ב","ג","ד"],"ok":1},{"q":"איזו מילה מתחילה באות ש׳?","a":["כלב","שמש","דג","ים"],"ok":1},{"q":"איזו אות באה אחרי א׳?","a":["ג","ד","ב","ה"],"ok":2},{"q":"איזו מילה מתחרזת עם ״פיל״?","a":["גיל","חתול","דלת","פרח"],"ok":0},{"q":"מהי האות האחרונה במילה ״דג״?","a":["ד","א","ג","ב"],"ok":2},{"q":"איזו מילה היא שם של חיה?","a":["כיסא","ספר","חתול","חלון"],"ok":2}],"english":[{"q":"איזו אות באנגלית היא A?","a":["B","C","A","D"],"ok":2},{"q":"איזו אות באה אחרי A?","a":["C","B","D","E"],"ok":1},{"q":"איזו אות היא הראשונה במילה CAT?","a":["T","A","C","B"],"ok":2},{"q":"איזו מילה היא צבע באנגלית?","a":["RED","DOG","SUN","BOOK"],"ok":0},{"q":"איזו אות באנגלית היא B?","a":["D","P","B","G"],"ok":2},{"q":"מה פירוש המילה CAT?","a":["כלב","חתול","בית","כדור"],"ok":1}],"engineering":[{"q":"כמה פינות יש למשולש?","a":["2","4","3","5"],"ok":2},{"q":"איזו צורה עגולה?","a":["ריבוע","עיגול","משולש","מלבן"],"ok":1},{"q":"כמה צדדים יש לריבוע?","a":["3","4","5","2"],"ok":1},{"q":"איזו צורה דומה לכדור?","a":["קובייה","כדור","פירמידה","משולש"],"ok":1},{"q":"מה הכי מתאים לבניית מגדל יציב?","a":["קוביות ישרות","בלונים","עלים","חוטים"],"ok":0},{"q":"כמה גלגלים יש לאופניים?","a":["1","2","3","4"],"ok":1}]}};
-const quizDecks={};function nextQuestion(who,type){const id=who+':'+type;let deck=quizDecks[id];if(!deck||deck.length===0){let prior=quizDecks[id+'-last'];deck=questionBank[who][type].map((_,i)=>i);for(let i=deck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}if(deck.length>1&&deck[deck.length-1]===prior){let k=deck.findIndex(x=>x!==prior);[deck[k],deck[deck.length-1]]=[deck[deck.length-1],deck[k]]}quizDecks[id]=deck;}let index=deck.pop();quizDecks[id+'-last']=index;return questionBank[who][type][index]}function update(){coins=Math.max(0,coins);level=1+Math.floor(xp/80);$('#coins').textContent=coins;$('#xp').textContent=xp;$('#level').textContent=level;localStorage.setItem('sp-alpha-'+profile,JSON.stringify({coins,xp,color,owned:save.owned||[]}))}function toast(s){let e=$('#tip');e.textContent=s;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2500)}function open(title,body){stopSpeech();clearPad();$('#modalContent').innerHTML='<h2>'+title+'</h2>'+body;$('#backdrop').classList.add('open');keys.clear()}function close(){stopSpeech();$('#backdrop').classList.remove('open')}$('#close').onclick=close;$('#backdrop').addEventListener('click',e=>{if(e.target.id==='backdrop')close()});
+
+/* More varied deterministic learning content for first unlock journey.
+   Exercises are algorithmically checked, not outsourced to AI. */
+function extendMathBank(who){
+ const bank=questionBank[who].math;
+ const unique=new Set(bank.map(q=>q.q));
+ function add(q,correct,wrong){
+  if(unique.has(q))return;
+  const answers=[String(correct),...wrong.map(String)].filter((v,i,a)=>a.indexOf(v)===i);
+  if(answers.length!==4)return;
+  const spin=(bank.length*7+3)%4;
+  const ordered=answers.slice(spin).concat(answers.slice(0,spin));
+  bank.push({q,a:ordered,ok:ordered.indexOf(String(correct))});unique.add(q);
+ }
+ if(who==='adel'){
+  for(let a=1;a<=18;a++)for(let b=1;b<=18;b++){
+   if(a+b<=20)add('כמה הם '+a+' + '+b+'?',a+b,[a+b+1,a+b-1,a+b+2].map(n=>Math.max(0,n)));
+   if(a>=b)add('כמה הם '+a+' − '+b+'?',a-b,[a-b+1,a-b+2,a-b+3]);
+  }
+ }else{
+  for(let a=3;a<=15;a++)for(let b=2;b<=13;b++){
+   add('כמה הם '+a+' × '+b+'?',a*b,[a*(b+1),a*b+a+1,Math.max(1,a*b-b)]);
+   add('כמה הם '+(a*b)+' ÷ '+a+'?',b,[b+1,b+2,b+3]);
+  }
+  for(let a=120;a<=390;a+=11){let b=23+a%71;add('כמה הם '+a+' + '+b+'?',a+b,[a+b+10,a+b-10,a+b+1]);}
+ }
+}
+extendMathBank('adel');extendMathBank('elroi');
+
+const quizDecks={};function nextQuestion(who,type){const id=who+':'+type;let deck=quizDecks[id];if(!deck||deck.length===0){let prior=quizDecks[id+'-last'];deck=questionBank[who][type].map((_,i)=>i);for(let i=deck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}if(deck.length>1&&deck[deck.length-1]===prior){let k=deck.findIndex(x=>x!==prior);[deck[k],deck[deck.length-1]]=[deck[deck.length-1],deck[k]]}quizDecks[id]=deck;}let index=deck.pop();quizDecks[id+'-last']=index;return questionBank[who][type][index]}function update(){coins=Math.max(0,coins);level=1+Math.floor(xp/80);$('#coins').textContent=coins;$('#xp').textContent=xp;$('#level').textContent=level;localStorage.setItem('sp-alpha-'+profile,JSON.stringify({...save,coins,xp,color,owned:save.owned||[]}))}function toast(s){let e=$('#tip');e.textContent=s;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2500)}function open(title,body){stopSpeech();clearPad();$('#modalContent').innerHTML='<h2>'+title+'</h2>'+body;$('#backdrop').classList.add('open');keys.clear()}function close(){stopSpeech();$('#backdrop').classList.remove('open')}$('#close').onclick=close;$('#backdrop').addEventListener('click',e=>{if(e.target.id==='backdrop')close()});
 function setColor(v){color=v;jacket.color.set(v==='blue'?'#547fe8':v==='pink'?'#f18ac0':v==='green'?'#5ac39c':'#e5ab44');update()}function wardrobe(){let items=[['blue','🔵','כחול'],['pink','🌸','ורוד'],['green','🌿','ירוק'],['gold','🌟','זהב']];open('👕 האווטאר שלי','<p>בחרו צבע בגד. בהמשך תוכלו לשדרג בגדים, שיער, תיקים ואנימציות.</p><div class="choices">'+items.map(([id,emoji,name])=>`<button class="choice ${color===id?'selected':''}" data-color="${id}"><span>${emoji}</span>${name}</button>`).join('')+'</div><div class="notice">שינוי צבע בחינם בגרסת ההדגמה.</div>');document.querySelectorAll('[data-color]').forEach(e=>e.onclick=()=>{setColor(e.dataset.color);wardrobe()})}$('#wardrobe').onclick=wardrobe;
 function shop(){let owned=save.owned||[];let items=[{id:'tree',e:'🌳',name:'עץ קסום לגינה',price:35},{id:'bench',e:'🪑',name:'ספסל לגינה',price:45},{id:'flag',e:'🚩',name:'דגל לבית',price:60},{id:'pet',e:'🐉',name:'דרקון מחמד',price:90}];open('🛍️ חנות הכוכב',`<p>יש לך ${coins} מטבעות. בחרו איך לפתח את העולם שלכם!</p><div class="choices">`+items.map(i=>`<button class="choice" data-buy="${i.id}" ${owned.includes(i.id)||coins<i.price?'disabled':''}><span>${i.e}</span>${i.name}<br>🪙 ${owned.includes(i.id)?'כבר שלי':i.price}</button>`).join('')+'</div><div class="notice">מטבעות דמיוניים בלבד, ללא רכישות בכסף אמיתי.</div>');document.querySelectorAll('[data-buy]').forEach(e=>e.onclick=()=>{let item=items.find(i=>i.id===e.dataset.buy);if(coins<item.price||owned.includes(item.id))return;coins-=item.price;owned.push(item.id);save.owned=owned;update();spawnItem(item.id);shop();toast('רכשת '+item.name+'! ✨')})}const spawned=new Set();function spawnItem(id){if(spawned.has(id))return;spawned.add(id);if(id==='tree')tree(-12,-8,1.5);if(id==='bench'){let g=group(scene,-12,0,-10);box(g,2,.22,.6,C.wood,0,.85,0);for(let s of [-.65,.65])box(g,.15,.7,.4,C.wood,s,.4,0)}if(id==='flag'){let g=group(scene,-18,0,-13);cyl(g,.1,.1,5,C.white,0,2.5,0);box(g,1.8,.9,.1,C.gold,.9,4.3,0)}if(id==='pet'){let g=group(scene,avatar.position.x+2,.4,avatar.position.z);sphere(g,.65,C.purple);cone(g,.23,.5,C.gold,.35,.8,0);cone(g,.23,.5,C.gold,-.35,.8,0)}}
 function home(){open('🏡 הבית שלי','<p>זה הבית הראשון שלך בכוכב ההצלחה. אפשר לרכוש פריטים ולפתח אותו בהמשך.</p><div class="choices"><div class="choice"><span>🏠</span>בית רמה 1</div><div class="choice"><span>🪴</span>גינה קטנה</div></div><div class="notice">בחנות אפשר כבר לקנות כמה פריטים לעולם!</div><button class="primary" id="goShop">פתחו חנות</button>');$('#goShop').onclick=shop}
@@ -291,15 +320,15 @@ function speakText(text,lang='he-IL'){
 function readQuestion(q,type){const english=type==='english'&&/^([A-Za-z\s?!.'-]+)$/.test(q.q);speakText(q.q,english?'en-US':'he-IL')}
 
 const stageNames={math:'מתמטיקה',hebrew:'עברית',english:'אנגלית',engineering:'הנדסה'};
-let currentStage=null;
+let currentStage=null;let firstTryCorrect=0;
 function quiz(type){
   currentStage={type,done:0,total:5,correct:0,answered:false};
   showStageQuestion();
 }
 function showStageQuestion(){
   stopSpeech();const st=currentStage;if(!st)return;
-  st.answered=false;
-  const q=nextQuestion(profile,st.type);
+  st.answered=false;st.hadWrong=false;
+  const q=nextQuestion(profile,st.type);st.question=q;
   const progress=Math.round(st.done/st.total*100);
   open('✨ '+stageNames[st.type],`
     <div class="quest-header"><span>🧩 אתגר ${st.done+1} מתוך ${st.total}</span><span>🪙 +10 לכל פתרון</span></div>
@@ -317,12 +346,15 @@ function showStageQuestion(){
   document.querySelectorAll('[data-answer]').forEach(button=>button.onclick=()=>{
     if(st.answered)return;
     if(Number(button.dataset.answer)===q.ok){
-      st.answered=true;st.correct++;st.done++;coins+=10;xp+=10;update();
+      st.answered=true;st.correct++;st.done++;coins+=10;xp+=10;
+      if(!st.hadWrong){const seen=save.correctIds||[];const id=currentWorld+'|'+st.type+'|'+q.q;if(!seen.includes(id)){seen.push(id);save.correctIds=seen;}}
+      update();
       document.querySelectorAll('[data-answer]').forEach(b=>b.disabled=true);
       button.classList.add('answer-correct');
       $('#feedback').innerHTML='<div class="notice">🎉 כל הכבוד! +10 מטבעות ו־10 XP</div><button class="primary" id="nextQuest">'+(st.done===st.total?'לקבלת פרס הסיום ✨':'לשאלה הבאה ←')+'</button>';
       $('#nextQuest').onclick=()=>st.done===st.total?finishStage():showStageQuestion();
     }else{
+      st.hadWrong=true;
       button.classList.add('answer-wrong');
       button.disabled=true;
       $('#feedback').innerHTML='<div class="notice" style="background:#fff1d6;color:#86571b">💡 כמעט! נסו תשובה אחרת. לא מאבדים נקודות.</div>';
@@ -331,7 +363,7 @@ function showStageQuestion(){
 }
 function finishStage(){
   stopSpeech();const st=currentStage;if(!st)return;
-  const bonus=30;coins+=bonus;xp+=bonus;update();
+  const bonus=30;coins+=bonus;xp+=bonus;save.completedQuests=(save.completedQuests||0)+1;update();
   open('🏆 משימה הושלמה!',`
     <div class="quest-victory">🌟🏆🌟</div>
     <h2 class="quest-win">כל חמשת האתגרים הושלמו!</h2>
@@ -375,7 +407,7 @@ async function localPinDigest(id,pin,salt){
 function showLogin(){stopSpeech();clearPad();keys.clear();moveVelocity.set(0,0);desiredVelocity.set(0,0);currentStage=null;close();$('#welcome').classList.remove('hidden');pinInfo()}
 async function enterProfile(){
  const pin=$('#pinInput').value.trim(),msg=$('#pinStatus'),button=$('#start');
- if(!/^\\d{4,6}$/.test(pin)){msg.textContent='הקלידו 4 עד 6 ספרות בלבד';return}
+ if(!/^\d{4,6}$/.test(pin)){msg.textContent='הקלידו 4 עד 6 ספרות בלבד';return}
  const limiter=pinCooldowns[profile];
  if(Date.now()<limiter.until){msg.textContent='יותר מדי ניסיונות. נסו שוב מעט מאוחר יותר';return}
  button.disabled=true;
