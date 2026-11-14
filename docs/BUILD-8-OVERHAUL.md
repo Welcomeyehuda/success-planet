@@ -18,6 +18,28 @@ An original, visually polished, mobile-first Hebrew 3D educational adventure for
 - Test both child avatars independently on iPhone Safari: stationary full 360° rotation, forward → stop → backward, left/right strafing or turn, repeated 180° direction reversals, diagonals, touch interruption, UI modal opening and device backgrounding; character must remain centered and grounded with no persistent drift or erratic movement.
 - **Do not mark completed or merge the next graphics vertical slice until a real iPhone test confirms stable centering in every direction.** CI success or render success alone is insufficient.
 
+## Engine evaluation gate — requested 2026-11-14
+**User test evidence:** the imported KayKit characters visually drift/rotate away from the player center while moving in any direction; switching into another world preview and the PIN sign-in are positively reviewed; graphic quality still fails the acceptance bar.
+
+**Code inspection:** current controller, animated model, imported GLB scene, fixed rigOffset and filtered clip tracks live together in one HTML module. A post-animation write zeros the model scene's X/Z positions without auditing every rig root track, and centering derives from transformed bounds. This warrants replacing the entire character adapter, not adding another arbitrary offset. Root cause is not proven until a controlled reproduction isolates model bind-pose, axes, clips and scene hierarchy.
+
+**Candidates (no migration authorized by evidence yet):**
+- PlayCanvas: Web-first engine and visual editor, GLB and animation state graphs, mobile WebGL2/WebGPU (as device allows); strong first prototype.
+- Babylon.js: Web-first framework with richer built-in character/physics/animation utilities; equally valid prototype.
+- Three.js: stay as baseline control to isolate whether KayKit assets are the true cause; changing engine alone won't fix source rig issues.
+- Godot 4: full editor but web exports use Compatibility renderer/WebGL2; iOS Safari has limitations and warrants on-device benchmarking before selection.
+- Unity Web: modern versions support iOS Safari 15+, but builds and runtime complexity must be compared on actual devices.
+
+**Required head-to-head vertical slice** — do not destroy currently functioning PIN/progression/second-world preview:
+1. The SAME professionally licensed GLB character with verified centered root, bind pose and axes, and the SAME authored in-place idle/walk/run animation in PlayCanvas vs Babylon.js; optionally a control in Three.js.
+2. Camera/controller origin independently visible (gizmos). Measure rig drift after 360-degree turning, long forward-back and left-right direction changes and full touch cancel.
+3. One premium-styled showcase environment with coherent buildings/materials/lighting in the same target art style, not scattershot asset packs.
+4. Compare launch time, FPS, draw calls and stability on the actual target iPhone in Safari; record visual evidence.
+5. Keep GitHub Pages hosting and GitHub-based source control when feasible. No paid tools/assets without prior approval.
+6. Adopt a new engine ONLY when the test establishes meaningful graphics/authoring/animation or reliability improvement while preserving web mobile performance.
+
+**Acceptance:** no visible displacement of feet/mesh from player pivot during 3 minutes of controls, fast camera movement or clip transitions. PIN and per-child progression remain unaffected. Mark current animation/root bug as unresolved until confirmed by hands-on device testing.
+
 ## 0. Family sign-in and separated child journeys (P0 product requirement, added 2026-11-14)
 - **Entry screen:** On launch, show a family welcome screen with two child profiles (אלרואי / אדל). Tapping a profile opens a large, mobile-friendly numeric keypad and requires that child's own **4–6 digit PIN** before entering their world. Never display either PIN, and never let a profile button alone unlock a journey.
 - **Distinct progress:** Each child has separate avatar appearance and purchases, wallet, XP, mastery and questions, unlocked worlds, story and building state, and narrated-reading preferences. Explicitly bind each read/write to the authenticated child profile; switching profiles must clear transient state, animation and cached UI.
