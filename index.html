@@ -421,6 +421,76 @@ function extendMathBank(who){
 }
 extendMathBank('adel');extendMathBank('elroi');
 
+/* Hand-authored reading/listening and reasoning scenarios (first content expansion). */
+const storyQuests={
+ adel:{
+  hebrew:[
+   {q:'הקשיבו לסיפור: מיה מצאה פרח אדום ונתנה אותו לאמא. למי נתנה מיה את הפרח?',a:['לאבא','לאמא','לחברה','למורה'],ok:1},
+   {q:'הקשיבו לסיפור: הדוב הקטן שכח את המעיל וירד גשם. מה כדאי לו לקחת?',a:['מטרייה','כדור','גלידה','ספר'],ok:0},
+   {q:'הקשיבו לסיפור: תמר שמה שלושה תפוחים בסל. מה תמר שמה בסל?',a:['בננות','עפרונות','תפוחים','נעליים'],ok:2},
+   {q:'איזו מילה מתחרזת עם ״חתול״?',a:['כדור','לול','מים','כיסא'],ok:1},
+   {q:'איזו מילה מתחילה בצליל מ?',a:['שמש','מגדל','דג','לב'],ok:1},
+   {q:'מה ההפך מהמילה ״איטי״?',a:['מהיר','עגול','גבוה','לבן'],ok:0},
+   {q:'הקשיבו: יואב סיים לצחצח שיניים ואז הלך לישון. מה עשה יואב קודם?',a:['ישן','אכל','צחצח שיניים','שיחק'],ok:2},
+   {q:'איזו מילה מתארת צבע?',a:['קופץ','ירוק','שמח','קר'],ok:1}
+  ],
+  english:[
+   {q:'איזו מילה באנגלית פירושה ״כלב״?',a:['Cat','Dog','Sun','Book'],ok:1},
+   {q:'מה פירוש המילה RED?',a:['אדום','כחול','צהוב','ירוק'],ok:0},
+   {q:'איזו מילה באנגלית פירושה ״שלום״?',a:['Bye','Hello','Milk','Tree'],ok:1},
+   {q:'מה פירוש המילה HAPPY?',a:['עייף','שמח','כועס','רעב'],ok:1},
+   {q:'איזו מילה באנגלית פירושה ״אחד״?',a:['Two','Four','One','Six'],ok:2},
+   {q:'What animal says MEOW?',a:['Dog','Cat','Cow','Duck'],ok:1},
+   {q:'What color is the sun in most drawings?',a:['Purple','Yellow','Black','Blue'],ok:1}
+  ],
+  engineering:[
+   {q:'בונים מגדל מקוביות. איזו קובייה הכי טוב לשים בבסיס?',a:['קובייה קטנה','קובייה גדולה ויציבה','עלה','בלון'],ok:1},
+   {q:'למה צריך גג לבית?',a:['כדי שלא ייכנס גשם','כדי שיהיה רעש','כדי להוסיף חול','כדי לסגור חלון'],ok:0},
+   {q:'איזו צורה מתאימה לגלגל?',a:['ריבוע','משולש','עיגול','כוכב'],ok:2},
+   {q:'אם גשר צר מדי לשתי מכוניות, מה כדאי לעשות?',a:['להרחיב אותו','להנמיך ענן','לצבוע בשחור','להוריד גלגל'],ok:0},
+   {q:'מה כבד יותר בדרך כלל?',a:['נוצה','אבן','בועת סבון','עלה'],ok:1},
+   {q:'איזה חומר סופג מים?',a:['מגבת','זכוכית','ברזל','פלסטיק'],ok:0}
+  ]
+ },
+ elroi:{
+  hebrew:[
+   {q:'הקשיבו לסיפור: רוני יצא בלי מטרייה. כשהגשם התחזק הוא נכנס לספרייה. מדוע נכנס רוני לספרייה?',a:['לקנות גלידה','להסתתר מהגשם','לעלות לאוטובוס','לפגוש רופא'],ok:1},
+   {q:'הקשיבו: עידו השקה את הצמח בכל יום, אבל הניח אותו בחדר חשוך. מה ייתכן שחסר לצמח?',a:['אור שמש','מוזיקה','חולצה','שעון'],ok:0},
+   {q:'מה פירוש הביטוי ״נתן כתף״?',a:['החליף חולצה','עזר למישהו','הרים שולחן','קפץ'],ok:1},
+   {q:'איזו מילה היא מילת קישור של סיבה?',a:['מפני ש','אחר כך','למרות','או'],ok:0},
+   {q:'איזה משפט כתוב בזמן עתיד?',a:['אתמול שיחקתי','אני משחק עכשיו','מחר אשחק','הוא שיחק'],ok:2},
+   {q:'מהי המילה הנרדפת ל״נחוש״?',a:['מתלבט','עקשן במטרה','עייף','שקט'],ok:1},
+   {q:'הקשיבו: אביה שכחה את הספר בבית, ולכן ביקשה מחברה לשאול עותק. מה הייתה הבעיה?',a:['לא היה מקום','הספר נשאר בבית','החברה איחרה','המורה עזבה'],ok:1},
+   {q:'באיזה משפט יש תיאור זמן?',a:['הכדור אדום','מחר נצא לטיול','הילד חכם','הבית גבוה'],ok:1}
+  ],
+  english:[
+   {q:'Complete: Yesterday I ___ to school.',a:['go','went','going','goes'],ok:1},
+   {q:'What does BEFORE mean?',a:['אחרי','לפני','בגלל','למעלה'],ok:1},
+   {q:'Choose the correct sentence.',a:['They is running','They are running','They am running','They be running'],ok:1},
+   {q:'What does EXPLORE mean?',a:['לחקור','לשכוח','לסגור','לנוח'],ok:0},
+   {q:'Find the opposite of BRAVE.',a:['Clever','Afraid','Happy','Ready'],ok:1},
+   {q:'Which word means ״גשר״?',a:['Bridge','Window','Forest','Cloud'],ok:0},
+   {q:'Complete: She has ___ apple.',a:['a','an','thee','am'],ok:1},
+   {q:'What does JOURNEY mean?',a:['ארוחה','מסע','כיסא','דלת'],ok:1}
+  ],
+  engineering:[
+   {q:'מה יקרה לגשר אם נסיר את העמוד התומך המרכזי?',a:['הוא עלול לאבד יציבות','הוא ישנה צבע','הוא יהפוך לקל','לא יקרה דבר בהכרח'],ok:0},
+   {q:'איזו צורה מפזרת עומס היטב בבניית מסבך?',a:['משולש','עיגול פתוח','קו בודד','חצי עיגול'],ok:0},
+   {q:'אם רוצים להקטין חיכוך בין גלגל לציר, מה יכול לעזור?',a:['שימון מתאים','חול יבש','דבק','צבע'],ok:0},
+   {q:'מה היתרון של בסיס רחב למגדל?',a:['הוא מגדיל יציבות','הוא מחליף את הגג','הוא הופך לבלתי נראה','הוא מקצר את הקומה'],ok:0},
+   {q:'כמה מעלות יש בסכום זוויות של משולש?',a:['90','180','270','360'],ok:1},
+   {q:'איזה חומר מוליך חשמל בדרך כלל?',a:['גומי','עץ יבש','נחושת','פלסטיק'],ok:2},
+   {q:'מה תפקידה של קורה אופקית במבנה?',a:['לשאת ולהעביר עומסים','להפיק חשמל','לצבוע את הקיר','ליצור רעש'],ok:0},
+   {q:'איך אפשר לחזק מבנה מלבני מפני התעוותות?',a:['להוסיף אלכסון תומך','להסיר ברגים','להגביה גג בלבד','לצבוע אותו'],ok:0}
+  ]
+ }
+};
+for(const who of ['adel','elroi'])for(const subject of ['hebrew','english','engineering']){
+ const bank=questionBank[who][subject];const seen=new Set(bank.map(q=>q.q));
+ for(const q of storyQuests[who][subject])if(!seen.has(q.q)){bank.push(q);seen.add(q.q)}
+}
+
+
 const quizDecks={};function nextQuestion(who,type){const id=who+':'+type;let deck=quizDecks[id];if(!deck||deck.length===0){let prior=quizDecks[id+'-last'];deck=questionBank[who][type].map((_,i)=>i);for(let i=deck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}if(deck.length>1&&deck[deck.length-1]===prior){let k=deck.findIndex(x=>x!==prior);[deck[k],deck[deck.length-1]]=[deck[deck.length-1],deck[k]]}quizDecks[id]=deck;}let index=deck.pop();quizDecks[id+'-last']=index;return questionBank[who][type][index]}function update(){coins=Math.max(0,coins);level=1+Math.floor(xp/80);$('#coins').textContent=coins;$('#xp').textContent=xp;$('#level').textContent=level;localStorage.setItem('sp-alpha-'+profile,JSON.stringify({...save,coins,xp,color,owned:save.owned||[]}))}function toast(s){let e=$('#tip');e.textContent=s;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2500)}function open(title,body){stopSpeech();clearPad();$('#modalContent').innerHTML='<h2>'+title+'</h2>'+body;$('#backdrop').classList.add('open');keys.clear()}function close(){stopSpeech();$('#backdrop').classList.remove('open')}$('#close').onclick=close;$('#backdrop').addEventListener('click',e=>{if(e.target.id==='backdrop')close()});
 function setColor(v){color=v;jacket.color.set(v==='blue'?'#547fe8':v==='pink'?'#f18ac0':v==='green'?'#5ac39c':'#e5ab44');update()}function wardrobe(){let items=[['blue','🔵','כחול'],['pink','🌸','ורוד'],['green','🌿','ירוק'],['gold','🌟','זהב']];open('👕 האווטאר שלי','<p>בחרו צבע בגד. בהמשך תוכלו לשדרג בגדים, שיער, תיקים ואנימציות.</p><div class="choices">'+items.map(([id,emoji,name])=>`<button class="choice ${color===id?'selected':''}" data-color="${id}"><span>${emoji}</span>${name}</button>`).join('')+'</div><div class="notice">שינוי צבע בחינם בגרסת ההדגמה.</div>');document.querySelectorAll('[data-color]').forEach(e=>e.onclick=()=>{setColor(e.dataset.color);wardrobe()})}$('#wardrobe').onclick=wardrobe;
 function shop(){let owned=save.owned||[];let items=[{id:'tree',e:'🌳',name:'עץ קסום לגינה',price:35},{id:'bench',e:'🪑',name:'ספסל לגינה',price:45},{id:'flag',e:'🚩',name:'דגל לבית',price:60},{id:'pet',e:'🐉',name:'דרקון מחמד',price:90}];open('🛍️ חנות הכוכב',`<p>יש לך ${coins} מטבעות. בחרו איך לפתח את העולם שלכם!</p><div class="choices">`+items.map(i=>`<button class="choice" data-buy="${i.id}" ${owned.includes(i.id)||coins<i.price?'disabled':''}><span>${i.e}</span>${i.name}<br>🪙 ${owned.includes(i.id)?'כבר שלי':i.price}</button>`).join('')+'</div><div class="notice">מטבעות דמיוניים בלבד, ללא רכישות בכסף אמיתי.</div>');document.querySelectorAll('[data-buy]').forEach(e=>e.onclick=()=>{let item=items.find(i=>i.id===e.dataset.buy);if(coins<item.price||owned.includes(item.id))return;coins-=item.price;owned.push(item.id);save.owned=owned;update();spawnItem(item.id);shop();toast('רכשת '+item.name+'! ✨')})}const spawned=new Set();const spawnedObjects=[];function clearSpawned(){for(const obj of spawnedObjects){scene.remove(obj);const i=worldOneNodes.indexOf(obj);if(i>=0)worldOneNodes.splice(i,1)}spawnedObjects.length=0;spawned.clear()};function spawnItem(id){if(spawned.has(id))return;const existing=new Set(scene.children);spawned.add(id);if(id==='tree')tree(-12,-8,1.5);if(id==='bench'){let g=group(scene,-12,0,-10);box(g,2,.22,.6,C.wood,0,.85,0);for(let s of [-.65,.65])box(g,.15,.7,.4,C.wood,s,.4,0)}if(id==='flag'){let g=group(scene,-18,0,-13);cyl(g,.1,.1,5,C.white,0,2.5,0);box(g,1.8,.9,.1,C.gold,.9,4.3,0)}if(id==='pet'){let g=group(scene,avatar.position.x+2,.4,avatar.position.z);sphere(g,.65,C.purple);cone(g,.23,.5,C.gold,.35,.8,0);cone(g,.23,.5,C.gold,-.35,.8,0)}
