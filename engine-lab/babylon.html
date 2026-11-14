@@ -1,0 +1,65 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#24335b"><title>כוכב ההצלחה | Babylon.js Lab</title><script src="https://cdn.babylonjs.com/babylon.js"></script><script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script></head><body><canvas id="screen"></canvas><script type="module">
+import {interfaceLab,MODEL} from './common.js';
+const ui=interfaceLab('Babylon.js');
+try{
+ const B=window.BABYLON;if(!B)throw Error('Babylon.js engine unavailable');
+ const canvas=document.querySelector('#screen');
+ const engine=new B.Engine(canvas,true,{preserveDrawingBuffer:false,stencil:false,disableWebGL2Support:false});
+ engine.setHardwareScalingLevel(Math.max(1,devicePixelRatio/1.7));
+ const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.51,.72,.88,1);
+ scene.ambientColor=new B.Color3(.3,.38,.55);
+ const color=(r,g,b)=>new B.Color3(r,g,b);
+ const mat=(name,r,g,b)=>{const m=new B.StandardMaterial(name,scene);m.diffuseColor=color(r,g,b);m.specularColor=color(.08,.08,.08);return m};
+ const grass=mat('grass',.29,.57,.48),sand=mat('sand',.92,.79,.62),stone=mat('stone',.62,.56,.84),gold=mat('gold',.95,.74,.34),roof=mat('roof',.71,.43,.81);
+ const cylinder=(name,x,y,z,d,h,m)=>{const o=B.MeshBuilder.CreateCylinder(name,{diameter:d,height:h,tessellation:24},scene);o.position.set(x,y,z);o.material=m;return o};
+ const box=(name,x,y,z,w,h,d,m)=>{const o=B.MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},scene);o.position.set(x,y,z);o.material=m;return o};
+ const sphere=(name,x,y,z,d,m)=>{const o=B.MeshBuilder.CreateSphere(name,{diameter:d,segments:12},scene);o.position.set(x,y,z);o.material=m;return o};
+ cylinder('floating-island',0,-.8,0,34,1.6,grass);box('main-road',0,.08,0,3,.13,24,sand);
+ for(let i=0;i<14;i++){const a=i*2.4,r=9+(i%3)*2.3,x=Math.cos(a)*r,z=Math.sin(a)*r;cylinder('tree',x,1.25,z,.65,2.5,stone);sphere('leaf',x,3.3,z,2.7,grass);}
+ for(let i=0;i<4;i++){const a=i*Math.PI/2,x=Math.cos(a)*8,z=Math.sin(a)*8;box('fantasy-house',x,1.8,z,4.5,3.6,3.6,stone);const t=cylinder('tower',x,4.6,z,4.1,2.4,roof);t.rotation.y=Math.PI/4;sphere('lamp',x,6,z,1.2,gold);}
+ const sun=new B.DirectionalLight('sun',new B.Vector3(-.4,-.8,.4),scene);sun.intensity=1.6;
+ const ambient=new B.HemisphericLight('sky',new B.Vector3(0,1,0),scene);ambient.intensity=.8;
+ const camera=new B.FreeCamera('follow-camera',new B.Vector3(0,9,16),scene);camera.fov=.85;camera.minZ=.1;camera.maxZ=220;
+ scene.activeCamera=camera;
+ const actor=new B.TransformNode('CONTROLLER_ORIGIN',scene),facing=new B.TransformNode('FACING_PIVOT',scene);
+ facing.parent=actor;
+ const marker=sphere('world-center-marker',0,.15,0,.3,gold);
+ const root=MODEL.substring(0,MODEL.lastIndexOf('/')+1),file=MODEL.split('/').pop();
+ const loaded=await B.SceneLoader.ImportMeshAsync('',root,file,scene);
+ const meshSet=loaded.meshes.filter(m=>m.getTotalVertices?.()>0);
+ if(!meshSet.length)throw Error('GLB loaded without visible meshes');
+ const movingRoots=loaded.meshes.filter(m=>!m.parent);
+ const fixed=new B.TransformNode('STABLE_VISUAL_OFFSET',scene);fixed.parent=facing;
+ for(const m of movingRoots)m.parent=fixed;
+ const bounds=()=>{
+   let low=new B.Vector3(Infinity,Infinity,Infinity),high=new B.Vector3(-Infinity,-Infinity,-Infinity);
+   for(const m of meshSet){m.computeWorldMatrix(true);const b=m.getBoundingInfo().boundingBox;low=B.Vector3.Minimize(low,b.minimumWorld);high=B.Vector3.Maximize(high,b.maximumWorld)}
+   return {low,high};
+ };
+ const b=bounds(),h=b.high.y-b.low.y;
+ if(h>.01&&Number.isFinite(h)){const scale=2.8/h;fixed.scaling.set(scale,scale,scale);fixed.position.set(-(b.high.x+b.low.x)/2*scale,-b.low.y*scale,-(b.high.z+b.low.z)/2*scale);}
+ const clips=loaded.animationGroups||[];
+ for(const c of clips)c.stop();
+ ui.status('✓ מודל נטען | '+clips.length+' אנימציות | הנפשה כבויה כברירת מחדל');
+ let active=null;
+ let follow=new B.Vector3(0,9,16);
+ engine.runRenderLoop(()=>{
+   const dt=Math.min(.05,Math.max(.001,engine.getDeltaTime()/1000));
+   const s=ui.step(dt);
+   actor.position.set(s.x,0,s.z);
+   facing.rotation.y=s.yaw;
+   marker.position.set(s.x,.15,s.z);
+   if(s.animation&&clips.length){
+    const key=s.walking?'walk':'idle';
+    const next=clips.find(c=>new RegExp(key==='walk'?'walk|run':'idle','i').test(c.name))||clips[0];
+    if(active!==next){if(active)active.stop();active=next;active.start(true,1,active.from,active.to,false);}
+   }else if(active){active.stop();active=null;}
+   // Raw skeleton/root animation is intentionally retained in this optional test mode to reveal drift.
+   const t=new B.Vector3(s.x,9,s.z+16);
+   follow=B.Vector3.Lerp(follow,t,1-Math.exp(-dt*5));
+   camera.position.copyFrom(follow);camera.setTarget(new B.Vector3(s.x,1.4,s.z));
+   scene.render();
+ });
+ window.addEventListener('resize',()=>engine.resize());
+}catch(error){console.error(error);ui.error('Babylon.js: '+String(error.message||error))}
+</script></body></html>
