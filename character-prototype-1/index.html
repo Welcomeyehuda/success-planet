@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#213353"><title>Success Planet · Character Prototype 1</title><script src="https://cdn.babylonjs.com/babylon.js"></script><script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script><style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,Arial;background:#263b63;color:white}#render{width:100%;height:100%;display:block;touch-action:none}
+#hud{position:fixed;inset:0;pointer-events:none}#header{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:8px;align-items:start;justify-content:space-between}
+.pane{background:#142542e7;backdrop-filter:blur(10px);border:1px solid #a3cdf766;border-radius:17px;padding:11px;pointer-events:auto;box-shadow:0 10px 35px #03162e44}.pane h1{font-size:15px;margin:0 0 5px}.pane small{font-size:10px;color:#cdeafc;display:block}.pane p{font-size:11px;color:#fbe5b2;margin:5px 0;max-width:240px}
+#options{display:flex;flex-direction:column;gap:6px;max-width:48vw}button{border:0;border-radius:12px;background:#ffefce;color:#263353;font:700 12px system-ui;padding:9px 10px;cursor:pointer;touch-action:none}
+#pad{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));right:16px;display:grid;grid-template-columns:repeat(3,55px);grid-template-rows:repeat(3,55px);gap:5px;direction:ltr;pointer-events:auto}
+#pad button{background:#ffffffdd;font-size:24px;user-select:none;-webkit-user-select:none;box-shadow:0 5px 12px #26344d66}#pad .up{grid-column:2;grid-row:1}#pad .left{grid-column:1;grid-row:2}#pad .right{grid-column:3;grid-row:2}#pad .down{grid-column:2;grid-row:3}
+#hint{position:absolute;left:12px;bottom:max(20px,env(safe-area-inset-bottom));max-width:43vw;font-size:11px;line-height:1.5}
+#error{position:fixed;top:35%;left:8%;right:8%;background:#722840e9;border-radius:18px;padding:20px;z-index:4;display:none}
+</style></head><body><canvas id="render"></canvas><div id="hud"><div id="header"><div class="pane"><h1>⭐ מעבדת הדמות החדשה</h1><small>Character Prototype 1 · Babylon.js</small><p id="status">טוען דמות חדשה...</p><small id="metrics">FPS: — | סטייה מהמרכז: —</small></div><div class="pane" id="options"><button id="model">🧙‍♂️ דמות: אביר Quaternius</button><button id="animation">🎞️ אנימציות: כבויות</button><button id="auto">▶️ בדיקת כל הכיוונים</button><button id="camera">🎥 מצלמה: עוקבת</button></div></div><div id="pad"><button class="up" data-dir="up">▲</button><button class="left" data-dir="left">◀</button><button class="right" data-dir="right">▶</button><button class="down" data-dir="down">▼</button></div><div id="hint" class="pane">🟡 העיגול הוא מרכז השחקן. אם הדמות מתרחקת ממנו, התקלה במודל או באנימציה — לא בכפתורי התנועה.</div></div><div id="error" role="alert"></div>
+<script type="module">
+try{
+ const B=window.BABYLON;if(!B)throw Error('Babylon.js לא נטען');
+ const $=id=>document.getElementById(id);
+ const engine=new B.Engine($('render'),true,{preserveDrawingBuffer:false,stencil:false,disableWebGL2Support:false});
+ engine.setHardwareScalingLevel(Math.max(1,devicePixelRatio/1.75));
+ const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.5,.76,.95,1);
+ const v=(x=0,y=0,z=0)=>new B.Vector3(x,y,z),col=(r,g,b)=>new B.Color3(r,g,b);
+ const material=(name,hex)=>{const m=new B.StandardMaterial(name,scene);m.diffuseColor=B.Color3.FromHexString(hex);m.specularColor=col(.1,.1,.1);return m};
+ const ground=material('meadow','#6cae8c'),stone=material('path','#e8d6bb'),yellow=material('pivot marker','#ffe577'),sky=material('sky','#81e1d8');
+ const floor=B.MeshBuilder.CreateGround('floor',{width:40,height:40},scene);floor.material=ground;
+ const pad=B.MeshBuilder.CreateDisc('start zone',{radius:3,tessellation:40,sideOrientation:B.Mesh.DOUBLESIDE},scene);pad.rotation.x=Math.PI/2;pad.position.y=.01;pad.material=stone;
+ const light=new B.HemisphericLight('fill',v(0,1,0),scene);light.intensity=.85;
+ const sun=new B.DirectionalLight('sun',v(-.4,-1,.5),scene);sun.intensity=1.35;
+ const camera=new B.FreeCamera('camera',v(0,7,14),scene);camera.minZ=.1;camera.maxZ=150;camera.fov=.78;scene.activeCamera=camera;
+ const controller=new B.TransformNode('CONTROLLER — sole authority',scene);
+ const facing=new B.TransformNode('FACING — rotate only',scene);facing.parent=controller;
+ const correction=new B.TransformNode('STATIC_VISUAL_OFFSET — never animated',scene);correction.parent=facing;
+ const dot=B.MeshBuilder.CreateSphere('controller-origin',{diameter:.4,segments:16},scene);dot.material=yellow;
+ const line=B.MeshBuilder.CreateLines('axis marker',{points:[v(0,0,0),v(0,0,-2)],updatable:true},scene);
+ const source=[
+ {label:'אביר Quaternius',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/knight.glb'},
+ {label:'דמות ניסוי חלופית',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/hero.glb'}
+ ];
+ let generation=0,activeGroups=[],currentGroup=null,loadedRoots=[],animEnabled=false,sourceIndex=0;
+ async function loadCharacter(){
+  const token=++generation;const item=source[sourceIndex];
+  $('status').textContent='טוען '+item.label+'...';
+  activeGroups.forEach(g=>g.stop());
+  activeGroups=[];currentGroup=null;
+  loadedRoots.forEach(m=>{try{m.dispose(false,true)}catch{}});
+  loadedRoots=[];correction.position.set(0,0,0);correction.scaling.setAll(1);
+  try{
+   const root=item.url.slice(0,item.url.lastIndexOf('/')+1),file=item.url.split('/').pop();
+   const result=await B.SceneLoader.ImportMeshAsync('',root,file,scene);
+   if(token!==generation){result.meshes.forEach(m=>m.dispose());return}
+   const meshes=result.meshes.filter(m=>m.getTotalVertices?.()>0);
+   if(!meshes.length)throw Error('הקובץ אינו מכיל גאומטריה מוצגת');
+   const roots=result.meshes.filter(m=>!m.parent);
+   for(const r of roots){r.parent=correction;loadedRoots.push(r)}
+   const low=v(Infinity,Infinity,Infinity),high=v(-Infinity,-Infinity,-Infinity);
+   meshes.forEach(m=>{m.computeWorldMatrix(true);const b=m.getBoundingInfo().boundingBox;
+    B.Vector3.MinimizeToRef(low,b.minimumWorld,low);B.Vector3.MaximizeToRef(high,b.maximumWorld,high)});
+   const h=high.y-low.y;
+   if(!Number.isFinite(h)||h<=0)throw Error('מידות מודל לא תקינות');
+   const scale=2.85/h;
+   correction.scaling.setAll(scale);
+   correction.position.set(-(low.x+high.x)*.5*scale,-low.y*scale,-(low.z+high.z)*.5*scale);
+   activeGroups=result.animationGroups||[];
+   activeGroups.forEach(g=>g.stop());
+   $('status').textContent='✓ '+item.label+' נטען · '+activeGroups.length+' אנימציות';
+  }catch(error){console.error(error);$('status').textContent='⚠️ מודל לא נטען: '+String(error.message||error)}
+ }
+ $('model').onclick=()=>{sourceIndex=(sourceIndex+1)%source.length;$('model').textContent='🧙‍♂️ דמות: '+source[sourceIndex].label;loadCharacter()};
+ $('animation').onclick=()=>{animEnabled=!animEnabled;$('animation').textContent='🎞️ אנימציות: '+(animEnabled?'פועלות':'כבויות');if(!animEnabled){activeGroups.forEach(g=>g.stop());currentGroup=null;loadCharacter()}};
+ const keys=new Set(),touches=new Map(),keymap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
+ const reset=()=>{keys.clear();touches.clear();velocity.set(0,0,0)};
+ for(const b of document.querySelectorAll('[data-dir]')){
+  b.addEventListener('pointerdown',e=>{e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch{}touches.set(e.pointerId,b.dataset.dir);keys.add(b.dataset.dir)});
+  const end=e=>{const dir=touches.get(e.pointerId);touches.delete(e.pointerId);if(dir&&![...touches.values()].includes(dir))keys.delete(dir)};
+  for(const type of ['pointerup','pointercancel','lostpointercapture','pointerleave'])b.addEventListener(type,end);
+ }
+ window.addEventListener('blur',reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)reset()});
+ document.addEventListener('keydown',e=>{if(keymap[e.code]){e.preventDefault();keys.add(keymap[e.code])}});
+ document.addEventListener('keyup',e=>{if(keymap[e.code])keys.delete(keymap[e.code])});
+ let automatic=false,elapsed=0,camTrack=true,px=0,pz=0,heading=0,frames=0,frameTime=0;
+ const velocity=v(0,0,0),cameraPos=v(0,7,14);
+ $('auto').onclick=()=>{automatic=!automatic;elapsed=0;reset();$('auto').textContent=automatic?'⏹ עצור בדיקת כיוונים':'▶️ בדיקת כל הכיוונים'};
+ $('camera').onclick=()=>{camTrack=!camTrack;$('camera').textContent=camTrack?'🎥 מצלמה: עוקבת':'🎥 מצלמה: קבועה'};
+ function frame(){
+  const dt=Math.max(.001,Math.min(.05,engine.getDeltaTime()/1000));
+  let dx=0,dz=0;
+  if(automatic){elapsed+=dt;const dirs=[[0,-1],[1,0],[0,1],[-1,0],[1,-1],[1,1],[-1,1],[-1,-1]];[dx,dz]=dirs[Math.floor(elapsed/2.3)%dirs.length]}
+  else{dx=(keys.has('right')?1:0)-(keys.has('left')?1:0);dz=(keys.has('down')?1:0)-(keys.has('up')?1:0)}
+  const len=Math.hypot(dx,dz)||1;dx/=len;dz/=len;
+  const smoothing=1-Math.exp(-dt*(dx||dz?12:18));
+  velocity.x+=(-dx*4.5-velocity.x)*smoothing;velocity.z+=(dz*4.5-velocity.z)*smoothing;
+  px=Math.max(-16,Math.min(16,px+velocity.x*dt));pz=Math.max(-16,Math.min(16,pz+velocity.z*dt));
+  if(Math.hypot(velocity.x,velocity.z)>.15){const ang=Math.atan2(velocity.x,velocity.z);heading+=Math.atan2(Math.sin(ang-heading),Math.cos(ang-heading))*(1-Math.exp(-dt*12))}
+  controller.position.set(px,0,pz);facing.rotation.y=heading;dot.position.set(px,.2,pz);
+  B.MeshBuilder.CreateLines('axis marker',{points:[v(px,.05,pz),v(px,0,pz-2)],instance:line});
+  const isWalking=Math.hypot(velocity.x,velocity.z)>.2;
+  if(animEnabled&&activeGroups.length){
+   const regex=isWalking?/walk|run|jog/i:/idle|stand/i;
+   const desired=activeGroups.find(g=>regex.test(g.name))||activeGroups[0];
+   if(currentGroup!==desired){if(currentGroup)currentGroup.stop();currentGroup=desired;desired.start(true)}
+  }else if(currentGroup){currentGroup.stop();currentGroup=null}
+  if(camTrack){const next=v(px,7,pz+14);B.Vector3.LerpToRef(cameraPos,next,1-Math.exp(-dt*6),cameraPos)}
+  camera.position.copyFrom(cameraPos);camera.setTarget(v(camTrack?px:0,1.5,camTrack?pz:0));
+  frameTime+=dt;frames++;
+  if(frameTime>1){
+   const meshCenter=correction.getAbsolutePosition(),offset=Math.hypot(meshCenter.x-px,meshCenter.z-pz);
+   $('metrics').textContent='FPS: '+Math.round(frames/frameTime)+' · הזזת הבקר: '+px.toFixed(1)+','+pz.toFixed(1)+' · סטיית עוגן: '+offset.toFixed(2);
+   frames=0;frameTime=0;
+  }
+  scene.render();
+ }
+ loadCharacter();engine.runRenderLoop(frame);window.addEventListener('resize',()=>engine.resize());
+}catch(error){console.error(error);const e=document.getElementById('error');e.textContent='שגיאת אתחול: '+String(error.message||error);e.style.display='block'}
+</script></body></html>
