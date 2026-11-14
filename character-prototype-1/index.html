@@ -38,10 +38,30 @@ try{
  const hair=B.MeshBuilder.CreateSphere('fallback-hair',{diameter:.92,segments:16},scene);hair.parent=fallback;hair.position.y=2.83;hair.scaling.y=.38;hair.material=hairMat;
  const legL=B.MeshBuilder.CreateCapsule('left-leg',{height:1.05,radius:.18},scene),legR=B.MeshBuilder.CreateCapsule('right-leg',{height:1.05,radius:.18},scene);
  legL.parent=fallback;legR.parent=fallback;legL.position.set(-.22,.58,0);legR.position.set(.22,.58,0);legL.material=legR.material=material('trousers','#364777');
+ // The earlier hero.glb was not listed in the upstream licensed asset manifest,
+ // and failed on-device. Until validated, offer a stable colorway of the same knight.
  const source=[
- {label:'אביר Quaternius',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/knight.glb'},
- {label:'דמות ניסוי חלופית',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/hero.glb'}
+ {label:'אביר מקורי',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/knight.glb'},
+ {label:'אביר כחול — גרסת צבע',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/knight.glb'}
  ];
+ const defaultColors=new WeakMap();
+ function applyVariant(){
+   const tint=sourceIndex===0?1:0.85;
+   const blue=sourceIndex===0?1:1.32;
+   for(const m of visibleMeshes){
+     if(!m||m.isDisposed()||!m.material)continue;
+     // Clone material before tinting; never mutate another mesh's shared material.
+     if(!defaultColors.has(m)){
+       m.material=m.material.clone(m.material.name+'-prototype');
+       const base=m.material.albedoColor||m.material.diffuseColor;
+       if(base)defaultColors.set(m,base.clone());
+     }
+     const base=defaultColors.get(m),target=m.material.albedoColor||m.material.diffuseColor;
+     if(base&&target){target.copyFromFloats(Math.min(1,base.r*tint),Math.min(1,base.g*blue),Math.min(1,base.b*blue));m.material.markAsDirty?.(B.Material.MiscDirtyFlag)}
+   }
+   fallbackMat.diffuseColor=sourceIndex===0?B.Color3.FromHexString('#537be7'):B.Color3.FromHexString('#5cc7e2');
+   $('model').textContent='🧙‍♂️ '+source[sourceIndex].label;
+ }
  let generation=0,activeGroups=[],currentGroup=null,loadedRoots=[],visibleMeshes=[],animEnabled=false,sourceIndex=0;let loading=false;
  async function loadCharacter(){
   const token=++generation;const item=source[sourceIndex];loading=true;fallback.setEnabled(true);
@@ -67,11 +87,13 @@ try{
    correction.scaling.setAll(scale);
    correction.position.set(-(low.x+high.x)*.5*scale,-low.y*scale,-(low.z+high.z)*.5*scale);
    activeGroups=result.animationGroups||[];
-   activeGroups.forEach(g=>g.stop());fallback.setEnabled(false);
+   activeGroups.forEach(g=>g.stop());fallback.setEnabled(false);applyVariant();
    $('status').textContent='✓ '+item.label+' נטען · '+activeGroups.length+' אנימציות';
   }catch(error){console.error(error);$('status').textContent='⚠️ המודל החיצוני לא נטען; דמות הגיבוי המקומית פעילה. '+String(error.message||error).slice(0,95)}finally{if(token===generation)loading=false}
  }
- $('model').onclick=()=>{sourceIndex=(sourceIndex+1)%source.length;$('model').textContent='🧙‍♂️ דמות: '+source[sourceIndex].label;loadCharacter()};
+ $('model').onclick=()=>{sourceIndex=(sourceIndex+1)%source.length;applyVariant();
+   $('status').textContent='✓ נבחר '+source[sourceIndex].label+' · אותו שלד יציב; לא מודל שני עצמאי';
+ };
  $('animation').onclick=()=>{animEnabled=!animEnabled;$('animation').textContent='🎞️ אנימציות: '+(animEnabled?'פועלות':'כבויות');if(!animEnabled){activeGroups.forEach(g=>g.stop());currentGroup=null}};
  const keys=new Set(),touches=new Map(),keymap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
  const reset=()=>{keys.clear();touches.clear();velocity.set(0,0,0)};
