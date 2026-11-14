@@ -29,13 +29,21 @@ try{
  const correction=new B.TransformNode('STATIC_VISUAL_OFFSET — never animated',scene);correction.parent=facing;
  const dot=B.MeshBuilder.CreateSphere('controller-origin',{diameter:.4,segments:16},scene);dot.material=yellow;
  const line=B.MeshBuilder.CreateLines('axis marker',{points:[v(0,0,0),v(0,0,-2)],updatable:true},scene);
+ // Built-in fallback uses only Babylon primitives; movement works without any GLB or external asset server.
+ const fallback=new B.TransformNode('VISIBLE_FALLBACK',scene);fallback.parent=facing;
+ const fallbackMat=material('fallback-blue','#537be7'),skinMat=material('fallback-skin','#f8be96'),hairMat=material('fallback-hair','#493753');
+ const torso=B.MeshBuilder.CreateCapsule('fallback-torso',{height:1.6,radius:.44},scene);torso.parent=fallback;torso.position.y=1.5;torso.material=fallbackMat;
+ const head=B.MeshBuilder.CreateSphere('fallback-head',{diameter:.9,segments:16},scene);head.parent=fallback;head.position.y=2.55;head.material=skinMat;
+ const hair=B.MeshBuilder.CreateSphere('fallback-hair',{diameter:.92,segments:16},scene);hair.parent=fallback;hair.position.y=2.83;hair.scaling.y=.38;hair.material=hairMat;
+ const legL=B.MeshBuilder.CreateCapsule('left-leg',{height:1.05,radius:.18},scene),legR=B.MeshBuilder.CreateCapsule('right-leg',{height:1.05,radius:.18},scene);
+ legL.parent=fallback;legR.parent=fallback;legL.position.set(-.22,.58,0);legR.position.set(.22,.58,0);legL.material=legR.material=material('trousers','#364777');
  const source=[
  {label:'אביר Quaternius',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/knight.glb'},
  {label:'דמות ניסוי חלופית',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/hero.glb'}
  ];
- let generation=0,activeGroups=[],currentGroup=null,loadedRoots=[],visibleMeshes=[],animEnabled=false,sourceIndex=0;
+ let generation=0,activeGroups=[],currentGroup=null,loadedRoots=[],visibleMeshes=[],animEnabled=false,sourceIndex=0;let loading=false;
  async function loadCharacter(){
-  const token=++generation;const item=source[sourceIndex];
+  const token=++generation;const item=source[sourceIndex];loading=true;fallback.setEnabled(true);
   $('status').textContent='טוען '+item.label+'...';
   activeGroups.forEach(g=>{g.stop();g.dispose()});
   activeGroups=[];currentGroup=null;
@@ -58,12 +66,12 @@ try{
    correction.scaling.setAll(scale);
    correction.position.set(-(low.x+high.x)*.5*scale,-low.y*scale,-(low.z+high.z)*.5*scale);
    activeGroups=result.animationGroups||[];
-   activeGroups.forEach(g=>g.stop());
+   activeGroups.forEach(g=>g.stop());fallback.setEnabled(false);
    $('status').textContent='✓ '+item.label+' נטען · '+activeGroups.length+' אנימציות';
-  }catch(error){console.error(error);$('status').textContent='⚠️ מודל לא נטען: '+String(error.message||error)}
+  }catch(error){console.error(error);$('status').textContent='⚠️ המודל החיצוני לא נטען; דמות הגיבוי המקומית פעילה. '+String(error.message||error).slice(0,95)}finally{if(token===generation)loading=false}
  }
  $('model').onclick=()=>{sourceIndex=(sourceIndex+1)%source.length;$('model').textContent='🧙‍♂️ דמות: '+source[sourceIndex].label;loadCharacter()};
- $('animation').onclick=()=>{animEnabled=!animEnabled;$('animation').textContent='🎞️ אנימציות: '+(animEnabled?'פועלות':'כבויות');if(!animEnabled){activeGroups.forEach(g=>g.stop());currentGroup=null;loadCharacter()}};
+ $('animation').onclick=()=>{animEnabled=!animEnabled;$('animation').textContent='🎞️ אנימציות: '+(animEnabled?'פועלות':'כבויות');if(!animEnabled){activeGroups.forEach(g=>g.stop());currentGroup=null}};
  const keys=new Set(),touches=new Map(),keymap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
  const reset=()=>{keys.clear();touches.clear();velocity.set(0,0,0)};
  for(const b of document.querySelectorAll('[data-dir]')){
@@ -89,6 +97,8 @@ try{
   px=Math.max(-16,Math.min(16,px+velocity.x*dt));pz=Math.max(-16,Math.min(16,pz+velocity.z*dt));
   if(Math.hypot(velocity.x,velocity.z)>.15){const ang=Math.atan2(velocity.x,velocity.z);heading+=Math.atan2(Math.sin(ang-heading),Math.cos(ang-heading))*(1-Math.exp(-dt*12))}
   controller.position.set(px,0,pz);facing.rotation.y=heading;dot.position.set(px,.2,pz);
+  const moving=Math.hypot(velocity.x,velocity.z)>.2;
+  if(fallback.isEnabled()){const phase=performance.now()*.011;legL.rotation.x=animEnabled&&moving?Math.sin(phase)*.5:0;legR.rotation.x=animEnabled&&moving?-Math.sin(phase)*.5:0;}
   B.MeshBuilder.CreateLines('axis marker',{points:[v(px,.05,pz),v(px,0,pz-2)],instance:line});
   const isWalking=Math.hypot(velocity.x,velocity.z)>.2;
   if(animEnabled&&activeGroups.length){
@@ -104,13 +114,14 @@ try{
    for(const mesh of visibleMeshes){if(mesh.isDisposed())continue;mesh.computeWorldMatrix(true);const bb=mesh.getBoundingInfo().boundingBox;
     B.Vector3.MinimizeToRef(low,bb.minimumWorld,low);B.Vector3.MaximizeToRef(high,bb.maximumWorld,high)}
    const meshX=(low.x+high.x)/2,meshZ=(low.z+high.z)/2;
-   const offset=Number.isFinite(meshX)?Math.hypot(meshX-px,meshZ-pz):NaN;
+   const offset=fallback.isEnabled()?0:Number.isFinite(meshX)?Math.hypot(meshX-px,meshZ-pz):NaN;
    $('metrics').textContent='FPS: '+Math.round(frames/frameTime)+' · בקר: '+px.toFixed(1)+','+pz.toFixed(1)+' · סטיית הדמות: '+(Number.isFinite(offset)?offset.toFixed(2):'—');
    $('metrics').style.color=offset>.35?'#ff9caf':'#cdeafc';
    frames=0;frameTime=0;
   }
   scene.render();
  }
- loadCharacter();engine.runRenderLoop(frame);window.addEventListener('resize',()=>engine.resize());
+ $('status').textContent='✓ בקר תנועה ודמות גיבוי פעילים. טוען מודל חיצוני...';
+ engine.runRenderLoop(frame);loadCharacter();window.addEventListener('resize',()=>engine.resize());
 }catch(error){console.error(error);const e=document.getElementById('error');e.textContent='שגיאת אתחול: '+String(error.message||error);e.style.display='block'}
 </script></body></html>
