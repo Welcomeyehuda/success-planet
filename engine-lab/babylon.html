@@ -5,20 +5,37 @@ try{
  const B=window.BABYLON;if(!B)throw Error('Babylon.js engine unavailable');
  const canvas=document.querySelector('#screen');
  const engine=new B.Engine(canvas,true,{preserveDrawingBuffer:false,stencil:false,disableWebGL2Support:false});
- engine.setHardwareScalingLevel(Math.max(1,devicePixelRatio/1.7));
+ engine.setHardwareScalingLevel(Math.max(1,devicePixelRatio/2));
  const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.51,.72,.88,1);
  scene.ambientColor=new B.Color3(.3,.38,.55);
+ // Side-by-side visual tuning: user can compare default vs vivid without altering animation.
+ const imaging=scene.imageProcessingConfiguration;
+ imaging.isEnabled=true;
+ let vivid=true;
+ function applyVisualStyle(){
+  imaging.contrast=vivid?1.34:1.0;
+  imaging.exposure=vivid?1.12:1.0;
+  imaging.toneMappingEnabled=false;
+  scene.clearColor=vivid?new B.Color4(.40,.70,.94,1):new B.Color4(.51,.72,.88,1);
+  engine.setHardwareScalingLevel(Math.max(1,devicePixelRatio/(vivid?2:1.7)));
+ }
+ applyVisualStyle();
+ const vividButton=document.createElement('button');
+ vividButton.textContent='🎨 צבעוניות: חדה';
+ document.querySelector('#actions').appendChild(vividButton);
+ vividButton.onclick=()=>{vivid=!vivid;applyVisualStyle();vividButton.textContent=vivid?'🎨 צבעוניות: חדה':'🎨 צבעוניות: רגילה'};
+
  const color=(r,g,b)=>new B.Color3(r,g,b);
  const mat=(name,r,g,b)=>{const m=new B.StandardMaterial(name,scene);m.diffuseColor=color(r,g,b);m.specularColor=color(.08,.08,.08);return m};
- const grass=mat('grass',.29,.57,.48),sand=mat('sand',.92,.79,.62),stone=mat('stone',.62,.56,.84),gold=mat('gold',.95,.74,.34),roof=mat('roof',.71,.43,.81);
+ const grass=mat('grass',.23,.66,.46),sand=mat('sand',.98,.78,.50),stone=mat('stone',.51,.49,.88),gold=mat('gold',1,.73,.24),roof=mat('roof',.77,.32,.83);
  const cylinder=(name,x,y,z,d,h,m)=>{const o=B.MeshBuilder.CreateCylinder(name,{diameter:d,height:h,tessellation:24},scene);o.position.set(x,y,z);o.material=m;return o};
  const box=(name,x,y,z,w,h,d,m)=>{const o=B.MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},scene);o.position.set(x,y,z);o.material=m;return o};
  const sphere=(name,x,y,z,d,m)=>{const o=B.MeshBuilder.CreateSphere(name,{diameter:d,segments:12},scene);o.position.set(x,y,z);o.material=m;return o};
  cylinder('floating-island',0,-.8,0,34,1.6,grass);box('main-road',0,.08,0,3,.13,24,sand);
  for(let i=0;i<14;i++){const a=i*2.4,r=9+(i%3)*2.3,x=Math.cos(a)*r,z=Math.sin(a)*r;cylinder('tree',x,1.25,z,.65,2.5,stone);sphere('leaf',x,3.3,z,2.7,grass);}
  for(let i=0;i<4;i++){const a=i*Math.PI/2,x=Math.cos(a)*8,z=Math.sin(a)*8;box('fantasy-house',x,1.8,z,4.5,3.6,3.6,stone);const t=cylinder('tower',x,4.6,z,4.1,2.4,roof);t.rotation.y=Math.PI/4;sphere('lamp',x,6,z,1.2,gold);}
- const sun=new B.DirectionalLight('sun',new B.Vector3(-.4,-.8,.4),scene);sun.intensity=1.6;
- const ambient=new B.HemisphericLight('sky',new B.Vector3(0,1,0),scene);ambient.intensity=.8;
+ const sun=new B.DirectionalLight('sun',new B.Vector3(-.4,-.8,.4),scene);sun.intensity=1.85;
+ const ambient=new B.HemisphericLight('sky',new B.Vector3(0,1,0),scene);ambient.intensity=.7;
  const camera=new B.FreeCamera('follow-camera',new B.Vector3(0,9,16),scene);camera.fov=.85;camera.minZ=.1;camera.maxZ=220;
  scene.activeCamera=camera;
  const actor=new B.TransformNode('CONTROLLER_ORIGIN',scene),facing=new B.TransformNode('FACING_PIVOT',scene);
@@ -40,7 +57,7 @@ try{
  if(h>.01&&Number.isFinite(h)){const scale=2.8/h;fixed.scaling.set(scale,scale,scale);fixed.position.set(-(b.high.x+b.low.x)/2*scale,-b.low.y*scale,-(b.high.z+b.low.z)/2*scale);}
  const clips=loaded.animationGroups||[];
  for(const c of clips)c.stop();
- ui.status('✓ מודל נטען | '+clips.length+' אנימציות | הנפשה כבויה כברירת מחדל');
+ ui.status('✓ מודל נטען | '+clips.length+' אנימציות | השוו צבעוניות חדה/רגילה ו-FPS');
  let active=null;
  let follow=new B.Vector3(0,9,16);
  engine.runRenderLoop(()=>{
