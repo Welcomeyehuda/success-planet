@@ -39,7 +39,35 @@ try{
  const sphere=(name,x,y,z,d,m)=>{const o=B.MeshBuilder.CreateSphere(name,{diameter:d,segments:12},scene);o.position.set(x,y,z);o.material=m;return o};
  cylinder('floating-island',0,-.8,0,34,1.6,grass);box('main-road',0,.08,0,3,.13,24,sand);
  for(let i=0;i<14;i++){const a=i*2.4,r=9+(i%3)*2.3,x=Math.cos(a)*r,z=Math.sin(a)*r;cylinder('tree',x,1.25,z,.65,2.5,stone);sphere('leaf',x,3.3,z,2.7,grass);}
- for(let i=0;i<4;i++){const a=i*Math.PI/2,x=Math.cos(a)*8,z=Math.sin(a)*8;box('fantasy-house',x,1.8,z,4.5,3.6,3.6,stone);const t=cylinder('tower',x,4.6,z,4.1,2.4,roof);t.rotation.y=Math.PI/4;sphere('lamp',x,6,z,1.2,gold);}
+ const primitiveHouses=[];
+ for(let i=0;i<4;i++){const a=i*Math.PI/2,x=Math.cos(a)*8,z=Math.sin(a)*8;const parts=[];parts.push(box('fantasy-house',x,1.8,z,4.5,3.6,3.6,stone));const t=cylinder('tower',x,4.6,z,4.1,2.4,roof);t.rotation.y=Math.PI/4;parts.push(t);parts.push(sphere('lamp',x,6,z,1.2,gold));primitiveHouses.push(parts)}
+ // Detail upgrade: independent licensed CC0 buildings. Primitive houses remain
+ // a fallback if a GLTF, texture or companion binary fails to load.
+ async function loadTownModels(){
+  const base='https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0@main/addons/kaykit_medieval_hexagon_pack/Assets/gltf/buildings/';
+  const models=[['blue','building_home_A_blue.gltf'],['yellow','building_market_yellow.gltf'],['red','building_church_red.gltf'],['blue','building_castle_blue.gltf']];
+  let loadedCount=0;
+  await Promise.all(models.map(async ([folder,file],i)=>{
+   const a=i*Math.PI/2,x=Math.cos(a)*8,z=Math.sin(a)*8;
+   try{
+    const result=await B.SceneLoader.ImportMeshAsync('',base+folder+'/',file,scene);
+    const meshes=result.meshes.filter(m=>m.getTotalVertices?.()>0);
+    if(!meshes.length)throw Error('Empty model');
+    const low=new B.Vector3(Infinity,Infinity,Infinity),high=new B.Vector3(-Infinity,-Infinity,-Infinity);
+    for(const mesh of meshes){mesh.computeWorldMatrix(true);const bounds=mesh.getBoundingInfo().boundingBox;
+     B.Vector3.MinimizeToRef(low,bounds.minimumWorld,low);B.Vector3.MaximizeToRef(high,bounds.maximumWorld,high);}
+    const height=high.y-low.y;if(!Number.isFinite(height)||height<.001)throw Error('Missing geometry bounds');
+    const pivot=new B.TransformNode('TownModelPivot-'+i,scene);
+    for(const mesh of result.meshes.filter(m=>!m.parent))mesh.parent=pivot;
+    const scale=7/height;
+    pivot.scaling.set(scale,scale,scale);
+    pivot.position.set(x-(high.x+low.x)*.5*scale,-low.y*scale,z-(high.z+low.z)*.5*scale);
+    primitiveHouses[i].forEach(m=>m.setEnabled(false));loadedCount++;
+   }catch(error){console.warn('CC0 town fallback:',file,error)}
+  }));
+  document.querySelector('#status').textContent+=' | בתי כפר מפורטים: '+loadedCount+'/4';
+ }
+ loadTownModels();
  const sun=new B.DirectionalLight('sun',new B.Vector3(-.4,-.8,.4),scene);sun.intensity=1.85;
  const ambient=new B.HemisphericLight('sky',new B.Vector3(0,1,0),scene);ambient.intensity=.7;
  const camera=new B.FreeCamera('follow-camera',new B.Vector3(0,9,16),scene);camera.fov=.85;camera.minZ=.1;camera.maxZ=220;
