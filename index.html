@@ -274,7 +274,7 @@ decorateWithRealAssets();
 /* Build 8 world navigation — the second world has independent 3D scenery. */
 const worldOneNodes=scene.children.filter(node=>node!==avatar&&!node.isLight);
 const worldTwoRoot=group(scene);worldTwoRoot.visible=false;
-let currentWorld=1;
+let currentWorld=1;let worldPreview=false;
 const skyMaterials={
  porcelain:mat('#d7e4ff',.23,.12),glow:mat('#ffd78c',.18,.22),
  crystal:mat('#b59cff',.14,.38),cloud:mat('#fff9fa',.8),
@@ -325,18 +325,18 @@ function worldUnlockState(){
  const subjects=new Set(first.map(id=>id.split('|')[1]));
  return {count:first.length,subjects:subjects.size,quests,second:first.length>=120&&quests>=24&&subjects.size>=3};
 }
-function selectWorld(n){
- if(n===2&&!worldUnlockState().second){toast('העולם הבא עדיין נעול — השלימו עוד משימות');return}
+function selectWorld(n,preview=false){
+ if(n===2&&!preview&&!worldUnlockState().second){toast('העולם הבא עדיין נעול — השלימו עוד משימות');return}
  if(n!==1&&n!==2){toast('עולם זה בפיתוח');return}
- currentWorld=n;
+ currentWorld=n;worldPreview=preview;
  worldOneNodes.forEach(o=>o.visible=n===1);
  worldTwoRoot.visible=n===2;
  scene.background=new THREE.Color(n===1?'#89d6e6':'#777fce');
  scene.fog=new THREE.FogExp2(n===1?'#a6dfe0':'#a59bdf',n===1?.010:.008);
  skyMaterials.glow.emissive?.set('#53381b');
- save.world=n;avatar.position.set(0,0,6);
+ if(!preview)save.world=n;avatar.position.set(0,0,6);
  moveVelocity.set(0,0);desiredVelocity.set(0,0);
- update();close();toast(n===1?'🌿 חזרתם לכפר הקסום':'☁️ ברוכים הבאים לאיי השמיים!');
+ update();close();toast(preview?'👀 תצוגה מקדימה בלבד — חזרו למפת העולמות':n===1?'🌿 חזרתם לכפר הקסום':'☁️ ברוכים הבאים לאיי השמיים!');
 }
 function showWorldMap(){
  const p=worldUnlockState();
@@ -348,11 +348,13 @@ function showWorldMap(){
   <p>לפתיחה: 120 שאלות ייחודיות בניסיון הראשון, 24 מסעות שהושלמו ולמידה ב־3 מקצועות.</p>
   <div class="world-progress"><div style="width:${pct}%"></div></div>
   <p>${p.count}/120 תשובות ייחודיות · ${p.quests}/24 מסעות · ${p.subjects}/3 מקצועות</p>
-  <button id="worldTwo" class="primary" ${unlocked?'':'disabled'}>${unlocked?'כניסה לאיי השמיים':'ממשיכים ללמוד כדי לפתוח'}</button></div>
+  <button id="worldTwo" class="primary" ${unlocked?'':'disabled'}>${unlocked?'כניסה לאיי השמיים':'ממשיכים ללמוד כדי לפתוח'}</button>
+  ${!unlocked?'<button id="worldPeek" class="quest-exit">👁️ הצצה לעולם השני (ללא משחק או ניקוד)</button>':''}</div>
   <div class="world-card"><strong>💎 עולם 3 · מערות הקריסטל</strong><p>בפיתוח — לא זמין עדיין</p></div>
   <div class="world-card"><strong>🐠 עולם 4 · ממלכת האוקיינוס</strong><p>בפיתוח — לא זמין עדיין</p></div>`);
  $('#worldOne').onclick=()=>selectWorld(1);
  $('#worldTwo').onclick=()=>selectWorld(2);
+ if($('#worldPeek'))$('#worldPeek').onclick=()=>selectWorld(2,true);
 }
 $('#worldMap').onclick=showWorldMap;
 
@@ -463,7 +465,7 @@ function finishStage(){
   $('#endQuest').onclick=()=>{currentStage=null;close()};
 }
 
-function interact(){if(!near){toast('התקרבו למבנה וחפשו את שם המקום ✨');return}if(near.type==='shop')shop();else if(near.type==='home')home();else quiz(near.type)}$('#interact').onclick=interact;$('#help').onclick=()=>open('🧭 איך משחקים?','<p>הזיזו את הדמות בעזרת החצים בתחתית המסך. במחשב אפשר להשתמש גם בחצי המקלדת או במקשי WASD.</p><div class="notice">🏠 הבית: אזור אישי · 🛍️ החנות: שדרוגים · ✨ השערים: אתגרי למידה. התקרבו למבנה ולחצו פעולה.</div><p class="small">זוהי הדגמה גרפית ומשחקית בלבד. אין משתמשים אמיתיים, דוחות הורים או סנכרון בענן. יש צורך בחיבור אינטרנט לטעינת מנוע התלת־ממד.</p>');
+function interact(){if(worldPreview){toast('זוהי תצוגה מקדימה — חזרו לעולם הראשון כדי ללמוד');return}if(!near){toast('התקרבו למבנה וחפשו את שם המקום ✨');return}if(near.type==='shop')shop();else if(near.type==='home')home();else quiz(near.type)}$('#interact').onclick=interact;$('#help').onclick=()=>open('🧭 איך משחקים?','<p>הזיזו את הדמות בעזרת החצים בתחתית המסך. במחשב אפשר להשתמש גם בחצי המקלדת או במקשי WASD.</p><div class="notice">🏠 הבית: אזור אישי · 🛍️ החנות: שדרוגים · ✨ השערים: אתגרי למידה. התקרבו למבנה ולחצו פעולה.</div><p class="small">זוהי הדגמה גרפית ומשחקית בלבד. אין משתמשים אמיתיים, דוחות הורים או סנכרון בענן. יש צורך בחיבור אינטרנט לטעינת מנוע התלת־ממד.</p>');
 const padPointers=new Map();let padLast=performance.now();
 function clearPad(){for(const direction of padPointers.values())keys.delete(direction);padPointers.clear()}
 function releasePad(id){const dir=padPointers.get(id);if(dir){padPointers.delete(id);if(![...padPointers.values()].includes(dir))keys.delete(dir)}}
@@ -492,7 +494,7 @@ async function localPinDigest(id,pin,salt){
  const buf=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(buf)).map(n=>n.toString(16).padStart(2,'0')).join('');
 }
-function showLogin(){clearSpawned();if(currentWorld!==1){selectWorld(1)}stopSpeech();clearPad();keys.clear();moveVelocity.set(0,0);desiredVelocity.set(0,0);currentStage=null;close();$('#welcome').classList.remove('hidden');pinInfo()}
+function showLogin(){clearSpawned();if(currentWorld!==1){selectWorld(1)}worldPreview=false;stopSpeech();clearPad();keys.clear();moveVelocity.set(0,0);desiredVelocity.set(0,0);currentStage=null;close();$('#welcome').classList.remove('hidden');pinInfo()}
 async function enterProfile(){
  const pin=$('#pinInput').value.trim(),msg=$('#pinStatus'),button=$('#start');
  if(!/^\d{4,6}$/.test(pin)){msg.textContent='הקלידו 4 עד 6 ספרות בלבד';return}
