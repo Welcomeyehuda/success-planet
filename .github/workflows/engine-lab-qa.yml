@@ -1,0 +1,41 @@
+name: Engine Lab Static QA
+on:
+  push:
+    branches: [main]
+    paths: ['engine-lab/**','.github/workflows/engine-lab-qa.yml']
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract and syntax check both engine demos
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          base=Path('engine-lab')
+          for engine in ('playcanvas','babylon'):
+              content=(base/(engine+'.html')).read_text()
+              m=re.search(r'<script type="module">([\s\S]*?)</script>',content)
+              assert m, f'No inline module in {engine}'
+              Path('/tmp/'+engine+'.mjs').write_text(m.group(1))
+              for key in ('interfaceLab','MODEL','ui.step','scene','camera'):
+                  assert key in content, f'Missing {key} in {engine}'
+          print('Both engines include the same control harness and model.')
+          PY
+          node --check engine-lab/common.js
+          node --check /tmp/playcanvas.mjs
+          node --check /tmp/babylon.mjs
+      - name: Verify remote GLB HTTP response
+        run: |
+          curl -fLsS --retry 2 --max-time 25 -o /tmp/character.glb 'https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0@main/addons/kaykit_character_pack_adventures/Characters/gltf/Rogue.glb'
+          python3 - <<'PY'
+          from pathlib import Path
+          b=Path('/tmp/character.glb').read_bytes()
+          assert b[:4]==b'glTF', 'Remote file is not a GLB'
+          print('GLB downloaded:',len(b),'bytes')
+          PY
