@@ -270,6 +270,92 @@ async function decorateWithRealAssets(){
 }
 decorateWithRealAssets();
 
+
+/* Build 8 world navigation — the second world has independent 3D scenery. */
+const worldOneNodes=scene.children.filter(node=>node!==avatar&&!node.isLight);
+const worldTwoRoot=group(scene);worldTwoRoot.visible=false;
+let currentWorld=1;
+const skyMaterials={
+ porcelain:mat('#d7e4ff',.23,.12),glow:mat('#ffd78c',.18,.22),
+ crystal:mat('#b59cff',.14,.38),cloud:mat('#fff9fa',.8),
+ gold:mat('#e9c47e',.2,.52),stone:mat('#a0a4e2',.68),
+ night:mat('#414280',.8)
+};
+const cloudBase=group(worldTwoRoot);
+mesh(new THREE.CylinderGeometry(30,25,3,48),skyMaterials.porcelain,cloudBase,0,-1.3,0,false);
+mesh(new THREE.CylinderGeometry(26,9,9,36),skyMaterials.stone,cloudBase,0,-6.1,0,false);
+for(let i=0;i<14;i++){
+ const a=i*2.39996,rad=12+(i%5)*2.8,x=Math.cos(a)*rad,z=Math.sin(a)*rad;
+ const g=group(worldTwoRoot,x,-.3,z);
+ const cloud=mesh(new THREE.SphereGeometry(1.5+(i%3)*.6,12,8),skyMaterials.cloud,g);
+ cloud.scale.set(1.5,.35,1.05);
+ sphere(g,1.1,skyMaterials.cloud,-1,.2,.1).scale.set(1.4,.38,1.2);
+}
+for(let i=0;i<28;i++){
+ const a=i*2.39996,r=7+(i%7)*2.3,x=Math.cos(a)*r,z=Math.sin(a)*r;
+ if(buildings.some(b=>Math.hypot(b.x-x,b.z-z)<5))continue;
+ const g=group(worldTwoRoot,x,0,z);
+ const crystal=mesh(new THREE.OctahedronGeometry(.8+(i%4)*.22,0),i%2?skyMaterials.crystal:skyMaterials.glow,g,0,1.6,0);
+ crystal.scale.y=1.8;g.userData.crystal=crystal;
+ cyl(g,.16,.38,1.1,skyMaterials.stone,0,.55,0,7);
+}
+for(const b of buildings){
+ const g=group(worldTwoRoot,b.x,0,b.z),magic=b.type==='math'||b.type==='english'||b.type==='engineering'||b.type==='hebrew';
+ cyl(g,3.25,3.5,.4,skyMaterials.stone,0,.24,0,20);
+ for(let a=0;a<9;a++){
+  const angle=a*2*Math.PI/9;let x=Math.cos(angle)*2.3,z=Math.sin(angle)*2.3;
+  cyl(g,.24,.35,4.3,skyMaterials.porcelain,x,2.55,z,8);
+  sphere(g,.31,skyMaterials.gold,x,4.8,z);
+ }
+ cyl(g,1.9,1.9,5.1,magic?skyMaterials.crystal:skyMaterials.stone,0,2.7,0,12);
+ cone(g,2.65,2.7,skyMaterials.glow,0,6.7,0,8);
+ const halo=mesh(new THREE.TorusGeometry(3.25,.15,8,48),skyMaterials.gold,g,0,5.4,0);
+ halo.rotation.x=Math.PI/2;
+}
+for(let i=0;i<13;i++){
+ const a=i*2.4,r=6+(i%7)*3.3,x=Math.cos(a)*r,z=Math.sin(a)*r;
+ let g=group(worldTwoRoot,x,.3,z);
+ const ring=mesh(new THREE.TorusGeometry(.8,.16,8,20),skyMaterials.gold,g,0,3.5,0);
+ ring.rotation.y=a;g.userData.ring=ring;
+ sphere(g,.35,skyMaterials.crystal,0,3.5,0);
+}
+function worldUnlockState(){
+ const ids=save.correctIds||[],quests=save.completedQuests||0;
+ const first=ids.filter(id=>id.startsWith('1|'));
+ const subjects=new Set(first.map(id=>id.split('|')[1]));
+ return {count:first.length,subjects:subjects.size,quests,second:first.length>=120&&quests>=24&&subjects.size>=3};
+}
+function selectWorld(n){
+ if(n===2&&!worldUnlockState().second){toast('העולם הבא עדיין נעול — השלימו עוד משימות');return}
+ if(n!==1&&n!==2){toast('עולם זה בפיתוח');return}
+ currentWorld=n;
+ worldOneNodes.forEach(o=>o.visible=n===1);
+ worldTwoRoot.visible=n===2;
+ scene.background=new THREE.Color(n===1?'#89d6e6':'#777fce');
+ scene.fog=new THREE.FogExp2(n===1?'#a6dfe0':'#a59bdf',n===1?.010:.008);
+ skyMaterials.glow.emissive?.set('#53381b');
+ save.world=n;avatar.position.set(0,0,6);
+ moveVelocity.set(0,0);desiredVelocity.set(0,0);
+ update();close();toast(n===1?'🌿 חזרתם לכפר הקסום':'☁️ ברוכים הבאים לאיי השמיים!');
+}
+function showWorldMap(){
+ const p=worldUnlockState();
+ const pct=Math.round(Math.min(100,p.count/120*100));
+ const unlocked=p.second;
+ open('🗺️ מפת העולמות',`
+  <div class="world-card"><strong>🌳 עולם 1 · הכפר הקסום</strong><p>העולם הראשון והבית שלכם</p><button id="worldOne" class="primary">כניסה לכפר</button></div>
+  <div class="world-card"><strong>☁️ עולם 2 · איי השמיים ${unlocked?'🔓':'🔒'}</strong>
+  <p>לפתיחה: 120 שאלות ייחודיות בניסיון הראשון, 24 מסעות שהושלמו ולמידה ב־3 מקצועות.</p>
+  <div class="world-progress"><div style="width:${pct}%"></div></div>
+  <p>${p.count}/120 תשובות ייחודיות · ${p.quests}/24 מסעות · ${p.subjects}/3 מקצועות</p>
+  <button id="worldTwo" class="primary" ${unlocked?'':'disabled'}>${unlocked?'כניסה לאיי השמיים':'ממשיכים ללמוד כדי לפתוח'}</button></div>
+  <div class="world-card"><strong>💎 עולם 3 · מערות הקריסטל</strong><p>בפיתוח — לא זמין עדיין</p></div>
+  <div class="world-card"><strong>🐠 עולם 4 · ממלכת האוקיינוס</strong><p>בפיתוח — לא זמין עדיין</p></div>`);
+ $('#worldOne').onclick=()=>selectWorld(1);
+ $('#worldTwo').onclick=()=>selectWorld(2);
+}
+$('#worldMap').onclick=showWorldMap;
+
 let profile='elroi',color='blue',save={},coins=120,xp=0,level=1,keys=new Set(),last=performance.now(),near=null,walking=0,questionIndex=0;
 const moveVelocity=new THREE.Vector2(0,0);const desiredVelocity=new THREE.Vector2(0,0);const moveSpeed=7.7;const questionBank={"elroi":{"math":[{"q":"כמה הם 8 × 7?","a":["54","56","64","48"],"ok":1},{"q":"כמה הם 96 ÷ 8?","a":["10","12","14","16"],"ok":1},{"q":"כמה הם 125 + 78?","a":["193","203","213","198"],"ok":1},{"q":"כמה הם 9 × 6?","a":["45","56","54","63"],"ok":2},{"q":"מהו חצי מ־150?","a":["50","65","75","85"],"ok":2},{"q":"מהו רבע מ־80?","a":["16","20","24","40"],"ok":1},{"q":"כמה הם 300 − 145?","a":["165","155","145","175"],"ok":1}],"hebrew":[{"q":"מהי צורת הרבים של ״איש״?","a":["אישים","אנשים","אישות","אישונים"],"ok":1},{"q":"איזו מילה היא פועל?","a":["שולחן","קופץ","כחול","מחר"],"ok":1},{"q":"איזו מילה נרדפת ל״שמח״?","a":["עצוב","מאושר","עייף","כועס"],"ok":1},{"q":"מה ההפך מ״רחב״?","a":["עמוק","גדול","צר","גבוה"],"ok":2},{"q":"איזו מילה כתובה נכון?","a":["מישחק","משחק","מיסחק","מישכק"],"ok":1},{"q":"מהו שם תואר?","a":["רץ","יפה","כדור","אתמול"],"ok":1}],"english":[{"q":"What is the opposite of HOT?","a":["Cold","Big","Fast","Old"],"ok":0},{"q":"Choose the plural of CHILD","a":["Childs","Children","Childes","Child"],"ok":1},{"q":"What does WINDOW mean?","a":["דלת","חלון","שולחן","רצפה"],"ok":1},{"q":"Complete: She ___ a book.","a":["read","reads","reading","are"],"ok":1},{"q":"Which word means 'מהיר'?","a":["Slow","Small","Fast","Tall"],"ok":2},{"q":"Choose the correct sentence.","a":["He are happy","He is happy","He am happy","He be happy"],"ok":1}],"engineering":[{"q":"כמה צלעות יש למשושה?","a":["4","5","6","8"],"ok":2},{"q":"באיזו צורה יש ארבע זוויות ישרות?","a":["משולש","מלבן","עיגול","מחומש"],"ok":1},{"q":"כמה סנטימטרים יש במטר?","a":["10","100","1000","50"],"ok":1},{"q":"איזו צורה יכולה להתגלגל בקלות?","a":["קובייה","גליל","פירמידה","תיבה"],"ok":1},{"q":"מה עוזר לייצב גשר?","a":["עמודים תומכים","צבע אדום","שלט","חלון"],"ok":0},{"q":"כמה פאות יש לקובייה?","a":["4","6","8","12"],"ok":1}]},"adel":{"math":[{"q":"כמה הם 3 + 2?","a":["4","5","6","3"],"ok":1},{"q":"כמה הם 5 − 2?","a":["2","4","3","1"],"ok":2},{"q":"איזה מספר בא אחרי 7?","a":["6","9","8","5"],"ok":2},{"q":"כמה הם 4 + 4?","a":["6","7","8","9"],"ok":2},{"q":"כמה הם 10 − 1?","a":["8","9","10","7"],"ok":1},{"q":"כמה הם 2 + 3?","a":["4","6","5","3"],"ok":2}],"hebrew":[{"q":"איזו אות פותחת את המילה ״בית״?","a":["א","ב","ג","ד"],"ok":1},{"q":"איזו מילה מתחילה באות ש׳?","a":["כלב","שמש","דג","ים"],"ok":1},{"q":"איזו אות באה אחרי א׳?","a":["ג","ד","ב","ה"],"ok":2},{"q":"איזו מילה מתחרזת עם ״פיל״?","a":["גיל","חתול","דלת","פרח"],"ok":0},{"q":"מהי האות האחרונה במילה ״דג״?","a":["ד","א","ג","ב"],"ok":2},{"q":"איזו מילה היא שם של חיה?","a":["כיסא","ספר","חתול","חלון"],"ok":2}],"english":[{"q":"איזו אות באנגלית היא A?","a":["B","C","A","D"],"ok":2},{"q":"איזו אות באה אחרי A?","a":["C","B","D","E"],"ok":1},{"q":"איזו אות היא הראשונה במילה CAT?","a":["T","A","C","B"],"ok":2},{"q":"איזו מילה היא צבע באנגלית?","a":["RED","DOG","SUN","BOOK"],"ok":0},{"q":"איזו אות באנגלית היא B?","a":["D","P","B","G"],"ok":2},{"q":"מה פירוש המילה CAT?","a":["כלב","חתול","בית","כדור"],"ok":1}],"engineering":[{"q":"כמה פינות יש למשולש?","a":["2","4","3","5"],"ok":2},{"q":"איזו צורה עגולה?","a":["ריבוע","עיגול","משולש","מלבן"],"ok":1},{"q":"כמה צדדים יש לריבוע?","a":["3","4","5","2"],"ok":1},{"q":"איזו צורה דומה לכדור?","a":["קובייה","כדור","פירמידה","משולש"],"ok":1},{"q":"מה הכי מתאים לבניית מגדל יציב?","a":["קוביות ישרות","בלונים","עלים","חוטים"],"ok":0},{"q":"כמה גלגלים יש לאופניים?","a":["1","2","3","4"],"ok":1}]}};
 
@@ -404,7 +490,7 @@ async function localPinDigest(id,pin,salt){
  const buf=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(buf)).map(n=>n.toString(16).padStart(2,'0')).join('');
 }
-function showLogin(){stopSpeech();clearPad();keys.clear();moveVelocity.set(0,0);desiredVelocity.set(0,0);currentStage=null;close();$('#welcome').classList.remove('hidden');pinInfo()}
+function showLogin(){if(currentWorld!==1){selectWorld(1)}stopSpeech();clearPad();keys.clear();moveVelocity.set(0,0);desiredVelocity.set(0,0);currentStage=null;close();$('#welcome').classList.remove('hidden');pinInfo()}
 async function enterProfile(){
  const pin=$('#pinInput').value.trim(),msg=$('#pinStatus'),button=$('#start');
  if(!/^\d{4,6}$/.test(pin)){msg.textContent='הקלידו 4 עד 6 ספרות בלבד';return}
@@ -426,7 +512,7 @@ async function enterProfile(){
   limiter.attempts=0;
   let stored;try{stored=JSON.parse(localStorage.getItem('sp-alpha-'+profile)||'{}')}catch{stored={}}
   save=stored;coins=stored.coins??120;xp=stored.xp??0;color=stored.color??(profile==='adel'?'pink':'blue');
-  applyCharacter(profile);setColor(color);for(const id of stored.owned||[])spawnItem(id);
+  applyCharacter(profile);selectWorld(stored.world===2?2:1);setColor(color);for(const id of stored.owned||[])spawnItem(id);
   $('#welcome').classList.add('hidden');$('#pinInput').value='';update();toast('ברוכים הבאים למסלול האישי! ⭐');
  }catch(error){console.error('PIN demo error',error);msg.textContent='שגיאה בכניסה. בדקו שהדפדפן מאפשר אחסון מקומי'}
  finally{button.disabled=false}
