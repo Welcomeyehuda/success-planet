@@ -33,20 +33,20 @@ try{
  {label:'אביר Quaternius',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/knight.glb'},
  {label:'דמות ניסוי חלופית',url:'https://cdn.jsdelivr.net/gh/ilrein/warptracker@main/public/models/hero.glb'}
  ];
- let generation=0,activeGroups=[],currentGroup=null,loadedRoots=[],animEnabled=false,sourceIndex=0;
+ let generation=0,activeGroups=[],currentGroup=null,loadedRoots=[],visibleMeshes=[],animEnabled=false,sourceIndex=0;
  async function loadCharacter(){
   const token=++generation;const item=source[sourceIndex];
   $('status').textContent='טוען '+item.label+'...';
-  activeGroups.forEach(g=>g.stop());
+  activeGroups.forEach(g=>{g.stop();g.dispose()});
   activeGroups=[];currentGroup=null;
   loadedRoots.forEach(m=>{try{m.dispose(false,true)}catch{}});
-  loadedRoots=[];correction.position.set(0,0,0);correction.scaling.setAll(1);
+  loadedRoots=[];visibleMeshes=[];correction.position.set(0,0,0);correction.scaling.setAll(1);
   try{
    const root=item.url.slice(0,item.url.lastIndexOf('/')+1),file=item.url.split('/').pop();
    const result=await B.SceneLoader.ImportMeshAsync('',root,file,scene);
    if(token!==generation){result.meshes.forEach(m=>m.dispose());return}
    const meshes=result.meshes.filter(m=>m.getTotalVertices?.()>0);
-   if(!meshes.length)throw Error('הקובץ אינו מכיל גאומטריה מוצגת');
+   if(!meshes.length)throw Error('הקובץ אינו מכיל גאומטריה מוצגת');visibleMeshes=meshes;
    const roots=result.meshes.filter(m=>!m.parent);
    for(const r of roots){r.parent=correction;loadedRoots.push(r)}
    const low=v(Infinity,Infinity,Infinity),high=v(-Infinity,-Infinity,-Infinity);
@@ -100,8 +100,13 @@ try{
   camera.position.copyFrom(cameraPos);camera.setTarget(v(camTrack?px:0,1.5,camTrack?pz:0));
   frameTime+=dt;frames++;
   if(frameTime>1){
-   const meshCenter=correction.getAbsolutePosition(),offset=Math.hypot(meshCenter.x-px,meshCenter.z-pz);
-   $('metrics').textContent='FPS: '+Math.round(frames/frameTime)+' · הזזת הבקר: '+px.toFixed(1)+','+pz.toFixed(1)+' · סטיית עוגן: '+offset.toFixed(2);
+   let low=v(Infinity,Infinity,Infinity),high=v(-Infinity,-Infinity,-Infinity);
+   for(const mesh of visibleMeshes){if(mesh.isDisposed())continue;mesh.computeWorldMatrix(true);const bb=mesh.getBoundingInfo().boundingBox;
+    B.Vector3.MinimizeToRef(low,bb.minimumWorld,low);B.Vector3.MaximizeToRef(high,bb.maximumWorld,high)}
+   const meshX=(low.x+high.x)/2,meshZ=(low.z+high.z)/2;
+   const offset=Number.isFinite(meshX)?Math.hypot(meshX-px,meshZ-pz):NaN;
+   $('metrics').textContent='FPS: '+Math.round(frames/frameTime)+' · בקר: '+px.toFixed(1)+','+pz.toFixed(1)+' · סטיית הדמות: '+(Number.isFinite(offset)?offset.toFixed(2):'—');
+   $('metrics').style.color=offset>.35?'#ff9caf':'#cdeafc';
    frames=0;frameTime=0;
   }
   scene.render();
