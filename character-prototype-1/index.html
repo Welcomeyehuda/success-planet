@@ -28,7 +28,8 @@ try{
  const facing=new B.TransformNode('FACING — rotate only',scene);facing.parent=controller;
  const correction=new B.TransformNode('STATIC_VISUAL_OFFSET — never animated',scene);correction.parent=facing;
  const dot=B.MeshBuilder.CreateSphere('controller-origin',{diameter:.4,segments:16},scene);dot.material=yellow;
- const line=B.MeshBuilder.CreateLines('axis marker',{points:[v(0,0,0),v(0,0,-2)],updatable:true},scene);
+ const line=B.MeshBuilder.CreateLines('axis marker',{points:[v(0,.05,0),v(0,.05,-2)]},scene);
+ line.parent=controller;line.color=col(1,.87,.24);
  // Built-in fallback uses only Babylon primitives; movement works without any GLB or external asset server.
  const fallback=new B.TransformNode('VISIBLE_FALLBACK',scene);fallback.parent=facing;
  const fallbackMat=material('fallback-blue','#537be7'),skinMat=material('fallback-skin','#f8be96'),hairMat=material('fallback-hair','#493753');
@@ -77,16 +78,18 @@ try{
  for(const b of document.querySelectorAll('[data-dir]')){
   b.addEventListener('pointerdown',e=>{e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch{}touches.set(e.pointerId,b.dataset.dir);keys.add(b.dataset.dir)});
   const end=e=>{const dir=touches.get(e.pointerId);touches.delete(e.pointerId);if(dir&&![...touches.values()].includes(dir))keys.delete(dir)};
-  for(const type of ['pointerup','pointercancel','lostpointercapture','pointerleave'])b.addEventListener(type,end);
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(type,end);
+  b.addEventListener('pointerdown',()=>{$('status').textContent='✅ נקלטה לחיצה: '+b.dataset.dir});
  }
  window.addEventListener('blur',reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)reset()});
  document.addEventListener('keydown',e=>{if(keymap[e.code]){e.preventDefault();keys.add(keymap[e.code])}});
  document.addEventListener('keyup',e=>{if(keymap[e.code])keys.delete(keymap[e.code])});
- let automatic=false,elapsed=0,camTrack=true,px=0,pz=0,heading=0,frames=0,frameTime=0;
+ let automatic=false,elapsed=0,camTrack=true,px=0,pz=0,heading=0,frames=0,frameTime=0;let frameFaults=0;
  const velocity=v(0,0,0),cameraPos=v(0,7,14);
  $('auto').onclick=()=>{automatic=!automatic;elapsed=0;reset();$('auto').textContent=automatic?'⏹ עצור בדיקת כיוונים':'▶️ בדיקת כל הכיוונים'};
  $('camera').onclick=()=>{camTrack=!camTrack;$('camera').textContent=camTrack?'🎥 מצלמה: עוקבת':'🎥 מצלמה: קבועה'};
  function frame(){
+ try{
   const dt=Math.max(.001,Math.min(.05,engine.getDeltaTime()/1000));
   let dx=0,dz=0;
   if(automatic){elapsed+=dt;const dirs=[[0,-1],[1,0],[0,1],[-1,0],[1,-1],[1,1],[-1,1],[-1,-1]];[dx,dz]=dirs[Math.floor(elapsed/2.3)%dirs.length]}
@@ -99,7 +102,7 @@ try{
   controller.position.set(px,0,pz);facing.rotation.y=heading;dot.position.set(px,.2,pz);
   const moving=Math.hypot(velocity.x,velocity.z)>.2;
   if(fallback.isEnabled()){const phase=performance.now()*.011;legL.rotation.x=animEnabled&&moving?Math.sin(phase)*.5:0;legR.rotation.x=animEnabled&&moving?-Math.sin(phase)*.5:0;}
-  B.MeshBuilder.CreateLines('axis marker',{points:[v(px,.05,pz),v(px,0,pz-2)],instance:line});
+  // The heading line is a fixed child of the controller. Never recreate mesh buffers inside a render frame.
   const isWalking=Math.hypot(velocity.x,velocity.z)>.2;
   if(animEnabled&&activeGroups.length){
    const regex=isWalking?/walk|run|jog/i:/idle|stand/i;
@@ -118,8 +121,13 @@ try{
    $('metrics').textContent='FPS: '+Math.round(frames/frameTime)+' · בקר: '+px.toFixed(1)+','+pz.toFixed(1)+' · סטיית הדמות: '+(Number.isFinite(offset)?offset.toFixed(2):'—');
    $('metrics').style.color=offset>.35?'#ff9caf':'#cdeafc';
    frames=0;frameTime=0;
+   $('status').textContent=automatic?'▶️ בדיקה אוטומטית פעילה':keys.size?'✅ תנועה: '+[...keys].join(', '):'✓ בקר פעיל · לחצו על אחד החצים';
   }
   scene.render();
+ }catch(error){
+  if(frameFaults++<2){console.error('Character prototype frame failure',error);$('status').textContent='❌ שגיאת תנועה: '+String(error.message||error).slice(0,110)}
+  try{scene.render()}catch(e){}
+ }
  }
  $('status').textContent='✓ בקר תנועה ודמות גיבוי פעילים. טוען מודל חיצוני...';
  engine.runRenderLoop(frame);loadCharacter();window.addEventListener('resize',()=>engine.resize());
