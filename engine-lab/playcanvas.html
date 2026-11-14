@@ -1,0 +1,59 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#24335b"><title>כוכב ההצלחה | PlayCanvas Lab</title><script type="importmap">{"imports":{"playcanvas":"https://cdn.jsdelivr.net/npm/playcanvas@2.24.0/build/playcanvas.mjs"}}</script></head><body><canvas id="screen"></canvas><script type="module">
+import * as pc from 'playcanvas';
+import {interfaceLab,MODEL} from './common.js';
+const ui=interfaceLab('PlayCanvas');
+try{
+ const canvas=document.querySelector('#screen');
+ const device=await pc.createGraphicsDevice(canvas,{deviceTypes:[pc.DEVICETYPE_WEBGL2]});
+ device.maxPixelRatio=Math.min(devicePixelRatio,1.7);
+ const opts=new pc.AppOptions();opts.graphicsDevice=device;
+ opts.componentSystems=[pc.RenderComponentSystem,pc.CameraComponentSystem,pc.LightComponentSystem,pc.AnimComponentSystem];
+ opts.resourceHandlers=[pc.TextureHandler,pc.ContainerHandler];
+ const app=new pc.AppBase(canvas);app.init(opts);app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);app.setCanvasResolution(pc.RESOLUTION_AUTO);app.start();
+ window.addEventListener('resize',()=>app.resizeCanvas());
+ app.scene.ambientLight=new pc.Color(.37,.42,.6);
+ const color=(r,g,b)=>new pc.Color(r,g,b);
+ const makeMat=(r,g,b)=>{const m=new pc.StandardMaterial();m.diffuse=color(r,g,b);m.metalness=0.02;m.gloss=35;m.update();return m};
+ const groundMat=makeMat(.29,.57,.48),pathMat=makeMat(.92,.79,.62),stoneMat=makeMat(.62,.56,.84),goldMat=makeMat(.95,.74,.34),roofMat=makeMat(.71,.43,.81);
+ const add=(type,name,x,y,z,sx,sy,sz,mat)=>{const e=new pc.Entity(name);e.addComponent('render',{type,material:mat});e.setPosition(x,y,z);e.setLocalScale(sx,sy,sz);app.root.addChild(e);return e};
+ add('cylinder','floating-island',0,-.8,0,34,1.6,34,groundMat);
+ add('box','main-road',0,.08,0,3,.13,24,pathMat);
+ for(let i=0;i<14;i++){const a=i*2.4,r=9+(i%3)*2.3,x=Math.cos(a)*r,z=Math.sin(a)*r;add('cylinder','tree',x,1.25,z,.65,2.5,.65,stoneMat);add('sphere','leaf',x,3.3,z,2.7,2.2,2.7,groundMat);}
+ for(let i=0;i<4;i++){const a=i*Math.PI/2,x=Math.cos(a)*8,z=Math.sin(a)*8;add('box','fantasy-house',x,1.8,z,4.5,3.6,3.6,stoneMat);const roof=add('cone','roof',x,4.6,z,4.4,2.4,4.4,roofMat);roof.setEulerAngles(0,45,0);add('sphere','lamp',x,6,z,1.2,1.2,1.2,goldMat);}
+ const camera=new pc.Entity('follow-camera');camera.addComponent('camera',{clearColor:color(.51,.72,.88),fov:55,farClip:220});app.root.addChild(camera);
+ const light=new pc.Entity('sun');light.addComponent('light',{type:'directional',intensity:1.65,castShadows:false});light.setEulerAngles(35,35,0);app.root.addChild(light);
+ const actor=new pc.Entity('CONTROLLER_ORIGIN');app.root.addChild(actor);
+ const facing=new pc.Entity('FACING_PIVOT');actor.addChild(facing);
+ const marker=add('sphere','world-center-marker',0,.13,0,.3,.3,.3,goldMat);
+ let rig=null,lastClip='',clips=[],baseYOffset=0;
+ const asset=new pc.Asset('character','container',{url:MODEL});app.assets.add(asset);app.assets.load(asset);
+ await new Promise((resolve,reject)=>{asset.ready(()=>asset.resource?resolve():reject(Error('Missing GLB resource')));asset.on('error',reject)});
+ rig=asset.resource.instantiateRenderEntity({castShadows:false});facing.addChild(rig);
+ rig.setLocalPosition(0,0,0);
+ const worldBounds=()=>{let min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
+ rig.forEach?.(()=>{});
+ const visit=(node)=>{if(node.render?.meshInstances)for(const mi of node.render.meshInstances){const b=mi.aabb;const lo=b.getMin(),hi=b.getMax();for(let j=0;j<3;j++){const axis=['x','y','z'][j];min[j]=Math.min(min[j],lo[axis]);max[j]=Math.max(max[j],hi[axis]);}}for(const c of node.children)visit(c)};
+ visit(rig);return {min,max}};
+ const b=worldBounds();const h=b.max[1]-b.min[1];
+ if(Number.isFinite(h)&&h>.01){const scale=2.8/h;rig.setLocalScale(scale,scale,scale);baseYOffset=-b.min[1]*scale;rig.setLocalPosition(-(b.min[0]+b.max[0])/2*scale,baseYOffset,-(b.min[2]+b.max[2])/2*scale);}
+ const fixed=rig.getLocalPosition().clone();
+ if(asset.resource.animations?.length){rig.addComponent('anim',{activate:false});for(const animation of asset.resource.animations){const name=animation.resource.name;rig.anim.assignAnimation(name,animation.resource);clips.push(name)}}
+ ui.status('✓ מודל נטען | '+clips.length+' אנימציות | הנפשה כבויה כברירת מחדל');
+ let started=false,activeName='',cameraPos=new pc.Vec3(0,9,16),clock=performance.now();
+ app.on('update',dt=>{
+   const s=ui.step(dt);
+   actor.setPosition(s.x,0,s.z);
+   facing.setEulerAngles(0,s.yaw*180/Math.PI,0);
+   marker.setPosition(s.x,.15,s.z);
+   if(rig.anim && s.animation){
+     const type=s.walking?'walk':'idle';
+     const target=clips.find(c=>new RegExp(type==='walk'?'walk|run':'idle','i').test(c))||clips[0];
+     if(target!==activeName){rig.anim.baseLayer.transition(target,.2);activeName=target}
+     rig.anim.playing=true;
+   }else if(rig.anim){rig.anim.playing=false;activeName=''}
+   // Do not repair root drift here: this benchmark should reveal whether native GLB clips move the visual rig.
+   const target=new pc.Vec3(s.x,9,s.z+16);cameraPos.lerp(cameraPos,target,1-Math.exp(-dt*5));
+   camera.setPosition(cameraPos);camera.lookAt(s.x,1.4,s.z);
+ });
+}catch(error){console.error(error);ui.error('PlayCanvas: '+String(error.message||error))}
+</script></body></html>
