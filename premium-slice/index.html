@@ -1,0 +1,126 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1"><meta name="theme-color" content="#83c9e8"><title>כוכב ההצלחה — Premium Fantasy Preview</title><script src="https://cdn.babylonjs.com/babylon.js"></script><script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script><style>
+*{box-sizing:border-box}html,body{margin:0;overflow:hidden;height:100%;font-family:system-ui,Arial}canvas{width:100%;height:100%;display:block;touch-action:none}#overlay{position:fixed;inset:0;pointer-events:none;color:#fff}#top{position:absolute;top:max(15px,env(safe-area-inset-top));left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.glass{background:#1a3051d5;backdrop-filter:blur(14px);border:1px solid #c4e2ff64;border-radius:19px;padding:11px 14px;box-shadow:0 12px 30px #0d1c3840}.title{font-weight:900;font-size:18px;color:#fff2d1}.small{font-size:11px;color:#d4f1ff;line-height:1.5}#controls{pointer-events:auto;display:flex;flex-direction:column;gap:6px;max-width:45vw}button{font:inherit;border:0;border-radius:13px;padding:11px;background:#fff2d4;color:#34405a;font-weight:800;cursor:pointer;touch-action:none}#controls button{font-size:12px;padding:9px 11px}#dpad{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));right:18px;display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:repeat(3,62px);gap:5px;direction:ltr;pointer-events:auto}#dpad button{font-size:25px;background:#ffffffdd;box-shadow:0 5px 15px #17334b5a;user-select:none;-webkit-user-select:none}#dpad .up{grid-row:1;grid-column:2}#dpad .left{grid-row:2;grid-column:1}#dpad .right{grid-row:2;grid-column:3}#dpad .down{grid-row:3;grid-column:2}#caption{position:absolute;bottom:max(25px,env(safe-area-inset-bottom));left:16px;max-width:43vw;line-height:1.5;font-size:11px}#error{position:fixed;inset:25% 8% auto;background:#611e38e8;border-radius:15px;color:white;padding:16px;display:none;z-index:20}#splash{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,#7d98db,#263361 75%);display:flex;align-items:center;justify-content:center;color:#fff;z-index:10;flex-direction:column;gap:14px}#splash h1{margin:0;font-size:29px}#splash small{color:#d5e6fa}#splash button{font-size:17px;min-width:200px}</style></head><body><canvas id="world"></canvas><div id="overlay"><div id="top"><div class="glass"><div class="title">⭐ כוכב ההצלחה</div><div class="small">PREMIUM FANTASY · BABYLON.JS</div><div id="status" class="small">טוען את העולם...</div></div><div id="controls" class="glass"><button id="hero">🧙 דמות: אלרואי / אדל</button><button id="quality">✨ איכות: גבוהה</button><div id="fps" class="small">FPS —</div></div></div><div id="dpad"><button class="up" data-dir="up">▲</button><button class="left" data-dir="left">◀</button><button class="right" data-dir="right">▶</button><button class="down" data-dir="down">▼</button></div><div id="caption" class="glass">🌸 אזור הדגמה גרפי. אפשר להסתובב, להחליף דמות ולבדוק את התנועה. המשחק החינוכי הקיים לא השתנה.</div></div><div id="error"></div><div id="splash"><div style="font-size:46px">🏰✨</div><h1>הכפר הקסום</h1><small>תצוגת פנטזיה תלת־ממדית</small><button id="enter">🚀 היכנסו לעולם</button></div><script type="module">
+const B=window.BABYLON;
+if(!B){document.querySelector('#error').style.display='block';document.querySelector('#error').textContent='המנוע לא נטען. נסו לפתוח בספארי.';throw Error('Babylon unavailable')}
+const canvas=document.querySelector('#world'),engine=new B.Engine(canvas,true,{preserveDrawingBuffer:false,stencil:false});
+let highQuality=true;const quality=()=>engine.setHardwareScalingLevel(highQuality?1:Math.max(1,devicePixelRatio/1.3));quality();
+const scene=new B.Scene(engine);scene.clearColor=new B.Color4(.48,.75,.95,1);
+scene.fogMode=B.Scene.FOGMODE_EXP2;scene.fogColor=new B.Color3(.66,.81,.96);scene.fogDensity=.007;
+const v=(x,y,z)=>new B.Vector3(x,y,z),c=(r,g,b)=>new B.Color3(r,g,b);
+const mat=(name,color,rough=.8,emit=0)=>{const m=new B.PBRMaterial(name,scene);m.albedoColor=B.Color3.FromHexString(color);m.metallic=.04;m.roughness=rough;if(emit){m.emissiveColor=m.albedoColor.scale(emit)}return m};
+const M={grass:mat('lush meadow','#60b87d'),grass2:mat('soft grass','#85d09b'),soil:mat('earth','#8b78aa'),rock:mat('granite','#897ea4'),path:mat('golden sand','#ffe3ae'),wall:mat('ivory','#fff0de'),wallPink:mat('soft pink','#edbfcf'),roof:mat('lavender roofs','#a977d0'),roofBlue:mat('blue roofs','#7095d6'),wood:mat('oak','#9e6381'),gold:mat('gold trim','#f7c56c',.3,.18),leaf:mat('forest','#319e79'),leaf2:mat('mint','#64cda0'),flowers:mat('coral flowers','#ff91af'),flowers2:mat('orchid petals','#ca98f4'),light:mat('luminous crystal','#91eaff',.18,.6),crystal:mat('violet crystal','#a98bff',.2,.35),glass:mat('azure glaze','#65b8db',.18,.08),cloud:mat('soft cloud','#f9f7ff'),pale:mat('pale stone','#d0c3e8')};
+const box=(name,w,h,d,x,y,z,material,parent=null)=>{let m=B.MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},scene);m.position.set(x,y,z);m.material=material;if(parent)m.parent=parent;return m};
+const sphere=(name,diam,x,y,z,material,parent=null)=>{let m=B.MeshBuilder.CreateSphere(name,{diameter:diam,segments:14},scene);m.position.set(x,y,z);m.material=material;if(parent)m.parent=parent;return m};
+const cylinder=(name,diam,height,x,y,z,material,parent=null,tess=16)=>{let m=B.MeshBuilder.CreateCylinder(name,{diameter:diam,height,tessellation:tess},scene);m.position.set(x,y,z);m.material=material;if(parent)m.parent=parent;return m};
+const ring=(name,r,t,x,y,z,material,parent=null)=>{let m=B.MeshBuilder.CreateTorus(name,{diameter:r*2,thickness:t,tessellation:32},scene);m.position.set(x,y,z);m.material=material;if(parent)m.parent=parent;return m};
+const P=new B.TransformNode('PremiumVillage',scene);
+cylinder('floating meadow',62,3,0,-1.6,0,M.grass,P,48);
+cylinder('rock foundation',55,6,0,-5.5,0,M.soil,P,42);
+cylinder('island base',44,9,0,-12,0,M.rock,P,32);
+cylinder('village plaza',13,.3,0,.14,0,M.path,P,40);
+ring('plaza inlay',5.4,.28,0,.36,0,M.gold,P);
+const landmarks=[[-18,-11],[16,-12],[17,12],[-17,12],[0,-19]];
+for(const [x,z] of landmarks){const length=Math.hypot(x,z),a=Math.atan2(x,z);
+ const tile=box('storybook winding path',3.2,.16,length,x/2,.18,z/2,M.path,P);tile.rotation.y=a;
+ cylinder('garden court',8,.24,x,.17,z,M.path,P,24);}
+const seeded=n=>{const x=Math.sin(n*113.41+6.7)*43758.5453;return x-Math.floor(x)};
+function tree(x,z,s,k=0){const trunk=cylinder('wood trunk',.55*s,2.7*s,x,1.3*s,z,M.wood,P,9);trunk.rotation.z=(seeded(k)-.5)*.08;
+ for(let j=0;j<4;j++){const a=j*2.4,rad=j===0?0:.7*s;const crown=sphere('rounded leaf canopy',2.75*s,x+Math.cos(a)*rad,3.1*s+(j%2)*.6*s,z+Math.sin(a)*rad,j%2?M.leaf2:M.leaf,P);crown.scaling.y=.82;}
+ for(let i=0;i<5;i++){sphere('little lantern flowers',.19*s,x+(seeded(k+i)*2-1)*1.5*s,2.8*s+seeded(k+i*3)*.9*s,z+(seeded(k+i*7)*2-1)*1.5*s,i%2?M.flowers:M.gold,P)}}
+for(let i=0;i<40;i++){const a=i*2.39996,r=10+seeded(i+1)*18,x=Math.cos(a)*r,z=Math.sin(a)*r;if(landmarks.some(p=>Math.hypot(x-p[0],z-p[1])<7))continue;tree(x,z,.75+seeded(i)*.52,i)}
+function cottage(x,z,kind=0){const house=new B.TransformNode('storybook cottage',scene);house.parent=P;house.position.set(x,0,z);
+ const wall=kind%2?M.wallPink:M.wall,roof=kind%2?M.roofBlue:M.roof;
+ box('rounded base house',5.7,4.1,5.3,0,2.1,0,wall,house);
+ const roofL=box('sloped cottage roof',4.4,.55,6.6,-1.65,5.25,0,roof,house);roofL.rotation.z=-Math.PI/4;
+ const roofR=box('sloped cottage roof',4.4,.55,6.6,1.65,5.25,0,roof,house);roofR.rotation.z=Math.PI/4;
+ box('door',1.35,2.45,.18,0,1.2,2.74,M.wood,house);
+ sphere('door knob',.20,.47,1.12,2.88,M.gold,house);
+ for(const side of [-1,1]){
+  box('fantasy window',1.38,1.4,.18,side*1.87,2.35,2.75,M.glass,house);
+  box('window sill',1.7,.15,.43,side*1.87,1.64,2.85,M.gold,house);
+  for(let i=0;i<3;i++)sphere('flower bed',.37,side*1.87+(i-1)*.42,1.83,3.0,i%2?M.flowers2:M.flowers,house);
+ }
+ cylinder('chimney',.72,1.8,-1.55,6.15,-1.2,M.pale,house,8);
+ for(let i=0;i<5;i++){const a=i*2*Math.PI/5; sphere('light charm',.15,Math.sin(a)*2.4,4.8,Math.cos(a)*2.3,M.gold,house)}
+ return house}
+for(let i=0;i<4;i++)cottage(...landmarks[i],i);
+const portal=new B.TransformNode('crystal gateway',scene);portal.parent=P;portal.position=v(0,0,-19);
+for(const x of [-2.3,2.3])cylinder('portal column',.68,5.6,x,2.8,0,M.pale,portal,10);
+const arch=ring('portal arc',2.25,.52,0,5.3,0,M.gold,portal);arch.rotation.x=Math.PI/2;
+const shimmer=B.MeshBuilder.CreateDisc('portal surface',{radius:2.12,tessellation:40,sideOrientation:B.Mesh.DOUBLESIDE},scene);shimmer.parent=portal;shimmer.position.y=3.3;shimmer.material=M.crystal;
+for(let i=0;i<13;i++){const a=i*2.4,r=5+(i%4)*4,x=Math.cos(a)*r,z=Math.sin(a)*r;
+ const stem=cylinder('lamp post',.16,2.1,x,1.05,z,M.gold,P,8);
+ sphere('enchanted lamp',.66,x,2.25,z,M.light,P);
+ sphere('lamp halo',.85,x,2.25,z,M.cloud,P).visibility=.13;}
+for(let i=0;i<180;i++){const a=i*2.39996,r=5+Math.sqrt(i/180)*24,x=Math.cos(a)*r,z=Math.sin(a)*r;
+ if(landmarks.some(p=>Math.hypot(x-p[0],z-p[1])<4))continue;
+ cylinder('grass blade',.025,.42,x,.2,z,M.leaf2,P,5);
+ const bloom=sphere('flower head',.19,x,.48,z,i%4?M.flowers:M.flowers2,P);bloom.scaling.y=.6;}
+const fireflies=[];for(let i=0;i<27;i++){const a=i*2.4,r=7+(i%9)*2.0;const glow=sphere('magical motes',.14,Math.cos(a)*r,2+(i%5)*.5,Math.sin(a)*r,i%3?M.gold:M.light,P);fireflies.push({mesh:glow,y:glow.position.y,phase:i})}
+const skyClouds=[];for(let i=0;i<12;i++){const a=i*2.39996,r=40+(i%3)*4,x=Math.cos(a)*r,z=Math.sin(a)*r;const cl=sphere('distant soft clouds',7,x,15+(i%4)*2,z,M.cloud,P);cl.scaling.set(1.8,.35,1);skyClouds.push(cl)}
+const hemi=new B.HemisphericLight('sky-fill',v(0,1,0),scene);hemi.diffuse=c(.82,.91,1);hemi.groundColor=c(.49,.39,.57);hemi.intensity=.78;
+const sun=new B.DirectionalLight('warm sunshine',v(-.45,-.9,.55),scene);sun.diffuse=c(1,.89,.76);sun.intensity=2.1;
+const camera=new B.FreeCamera('cinematic-follow',v(0,10,18),scene);camera.fov=.78;camera.minZ=.08;camera.maxZ=180;scene.activeCamera=camera;
+let pipeline;try{pipeline=new B.DefaultRenderingPipeline('fantasy-grade',true,scene,[camera]);pipeline.fxaaEnabled=true;pipeline.samples=4;pipeline.bloomEnabled=true;pipeline.bloomWeight=.10;pipeline.bloomThreshold=.78;pipeline.bloomKernel=32}catch(e){console.warn('post-processing fallback',e)}
+const actor=new B.TransformNode('player controller — never animated',scene);
+const rotation=new B.TransformNode('player facing',scene);rotation.parent=actor;
+const stableOffset=new B.TransformNode('stable body offset',scene);stableOffset.parent=rotation;
+const shadow=B.MeshBuilder.CreateDisc('ground reference',{radius:.75,tessellation:24,sideOrientation:B.Mesh.DOUBLESIDE},scene);
+shadow.rotation.x=Math.PI/2;shadow.position.y=.04;shadow.material=mat('shadow-reference','#485b79');
+const modelRoot='https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0@main/addons/kaykit_character_pack_adventures/Characters/gltf/';
+let characterLoad=0,animations=[],currentClip=null;
+async function chooseHero(name){
+ const generation=++characterLoad;
+ document.querySelector('#status').textContent='טוען דמות '+(name==='Mage'?'אדל':'אלרואי')+'...';
+ const existing=stableOffset.getChildren().slice();for(const child of existing)child.dispose(false,true);
+ stableOffset.position.set(0,0,0);stableOffset.scaling.set(1,1,1);
+ for(const group of animations)group.stop();animations=[];currentClip=null;
+ try{
+  const data=await B.SceneLoader.ImportMeshAsync('',modelRoot,name+'.glb',scene);
+  if(generation!==characterLoad){for(const m of data.meshes)m.dispose();return}
+  const meshes=data.meshes.filter(m=>m.getTotalVertices?.()>0),roots=data.meshes.filter(m=>!m.parent);
+  if(!meshes.length)throw Error('no mesh');
+  for(const root of roots)root.parent=stableOffset;
+  let low=v(Infinity,Infinity,Infinity),high=v(-Infinity,-Infinity,-Infinity);
+  for(const mesh of meshes){mesh.computeWorldMatrix(true);const bb=mesh.getBoundingInfo().boundingBox;low=B.Vector3.Minimize(low,bb.minimumWorld);high=B.Vector3.Maximize(high,bb.maximumWorld);}
+  const height=high.y-low.y;if(height>.001&&Number.isFinite(height)){const scale=2.9/height;stableOffset.scaling.setAll(scale);stableOffset.position.set(-(low.x+high.x)/2*scale,-low.y*scale,-(low.z+high.z)/2*scale)}
+  animations=data.animationGroups||[];animations.forEach(x=>x.stop());
+  document.querySelector('#status').textContent='✓ דמות '+(name==='Mage'?'אדל':'אלרואי')+' נטענה · '+animations.length+' אנימציות';
+ }catch(error){console.warn(error);document.querySelector('#status').textContent='⚠ דמות לא נטענה — ממתין לבדיקה';}
+}
+let hero='Rogue';document.querySelector('#hero').onclick=()=>{hero=hero==='Rogue'?'Mage':'Rogue';chooseHero(hero)};
+document.querySelector('#quality').onclick=()=>{highQuality=!highQuality;quality();if(pipeline){pipeline.samples=highQuality?4:1;pipeline.bloomEnabled=highQuality};document.querySelector('#quality').textContent=highQuality?'✨ איכות: גבוהה':'⚡ איכות: חסכונית'};
+const keyMap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'},keys=new Set(),pointers=new Map();
+for(const btn of document.querySelectorAll('[data-dir]')){
+ btn.addEventListener('contextmenu',e=>e.preventDefault());
+ btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture?.(e.pointerId);pointers.set(e.pointerId,btn.dataset.dir);keys.add(btn.dataset.dir)});
+ const release=e=>{let direction=pointers.get(e.pointerId);pointers.delete(e.pointerId);if(direction&&![...pointers.values()].includes(direction))keys.delete(direction)};
+ for(const type of ['pointerup','pointercancel','lostpointercapture','pointerleave'])btn.addEventListener(type,release);
+}
+const clearControls=()=>{keys.clear();pointers.clear();velocity.set(0,0,0)};
+window.addEventListener('blur',clearControls);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearControls()});
+document.addEventListener('keydown',e=>{if(keyMap[e.code]){e.preventDefault();keys.add(keyMap[e.code])}});
+document.addEventListener('keyup',e=>{if(keyMap[e.code])keys.delete(keyMap[e.code])});
+const velocity=v(0,0,0);let px=0,pz=5,heading=0,camPos=v(0,10,18),frameTimer=0,frameCount=0;
+function frame(){
+ const dt=Math.min(.05,engine.getDeltaTime()/1000),t=performance.now();
+ let ix=(keys.has('left')?-1:0)+(keys.has('right')?1:0),iz=(keys.has('up')?-1:0)+(keys.has('down')?1:0);
+ const len=Math.hypot(ix,iz)||1;ix/=len;iz/=len;
+ const accel=1-Math.exp(-dt*(ix||iz?11:19));
+ velocity.x+=((-ix)*5.1-velocity.x)*accel;velocity.z+=(iz*5.1-velocity.z)*accel;
+ if(!ix&&!iz&&Math.hypot(velocity.x,velocity.z)<.02)velocity.x=velocity.z=0;
+ const nx=px+velocity.x*dt,nz=pz+velocity.z*dt;
+ if(Math.hypot(nx,nz)<26){px=nx;pz=nz}else velocity.set(0,0,0);
+ if(Math.hypot(velocity.x,velocity.z)>.15){const target=Math.atan2(velocity.x,velocity.z);heading+=Math.atan2(Math.sin(target-heading),Math.cos(target-heading))*(1-Math.exp(-dt*12));}
+ actor.position.set(px,0,pz);rotation.rotation.y=heading;shadow.position.x=px;shadow.position.z=pz;
+ if(animations.length){const walk=Math.hypot(velocity.x,velocity.z)>.25,desired=animations.find(a=>new RegExp(walk?'walk|run':'idle','i').test(a.name))||animations[0];
+   if(currentClip!==desired){if(currentClip)currentClip.stop();currentClip=desired;currentClip.start(true,1,currentClip.from,currentClip.to,false);}}
+ const target=v(px,9.1,pz+16);camPos=B.Vector3.Lerp(camPos,target,1-Math.exp(-dt*5));camera.position.copyFrom(camPos);camera.setTarget(v(px,1.55,pz));
+ portal.rotation.y=Math.sin(t*.0004)*.018;for(const f of fireflies)f.mesh.position.y=f.y+Math.sin(t*.0014+f.phase)*.23;
+ frameTimer+=dt;frameCount++;if(frameTimer>=1){document.querySelector('#fps').textContent='FPS '+Math.round(frameCount/frameTimer);frameTimer=0;frameCount=0}
+ scene.render();
+}
+document.querySelector('#enter').onclick=()=>{document.querySelector('#splash').style.display='none';chooseHero(hero);};
+window.addEventListener('resize',()=>engine.resize());
+engine.runRenderLoop(frame);
+</script></body></html>
