@@ -1,0 +1,36 @@
+name: Build 8 static QA
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  static-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract and check game module syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+          s=Path('index.html').read_text()
+          module=re.search(r'<script type="module">([\s\S]*?)</script>',s)
+          assert module, "Missing main game module"
+          Path('/tmp/success-planet.mjs').write_text(module.group(1))
+          for id in ['pinInput','start','worldMap','logout','welcome','backdrop']:
+              assert f'id="{id}"' in s, f"Missing UI: {id}"
+          bank=re.search(r'const questionBank=(\{.*?\});\s*(?:/\*|const |function )',s,re.S)
+          assert bank, "Missing questionBank"
+          data=json.loads(bank.group(1))
+          for child in ('adel','elroi'):
+              for subject in ('math','hebrew','english','engineering'):
+                  entries=data[child][subject]
+                  assert len(entries)>=5, (child,subject)
+                  for q in entries:
+                      assert len(q['a'])==4 and 0 <= q['ok'] < 4, q
+          print('Core UI and basic question bank checks passed')
+          PY
+          node --check /tmp/success-planet.mjs
